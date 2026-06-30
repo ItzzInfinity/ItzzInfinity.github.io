@@ -18,12 +18,12 @@ export const seedData: AppData = {
       "FPGA Design Engineer with hands-on experience in RTL design, FPGA prototyping, and digital system implementation. Skilled in Verilog, SystemVerilog, and hardware verification methodologies, with strong knowledge of protocols like UART, I2C, and SPI. Experienced in using industry-standard tools such as Vivado, Quartus, and Gowin EDA for design, synthesis, and simulation.",
   },
   domains: [
-    { id: "vlsi", name: "VLSI", slug: "vlsi", enabled: true, order: 0 },
-    { id: "rtl", name: "RTL Design", slug: "rtl", enabled: true, order: 1, parentId: "vlsi" },
-    { id: "verification", name: "Verification", slug: "verification", enabled: true, order: 2, parentId: "vlsi" },
-    { id: "fpga", name: "FPGA Design", slug: "fpga", enabled: true, order: 3, parentId: "vlsi" },
-    { id: "embedded", name: "Embedded", slug: "embedded", enabled: true, order: 4 },
-    { id: "pcb", name: "PCB Design", slug: "pcb", enabled: true, order: 5 },
+    { id: "vlsi", name: "VLSI", slug: "vlsi", enabled: true, order: 0, resumeTitle: "VLSI Design Engineer" },
+    { id: "rtl", name: "RTL Design", slug: "rtl", enabled: true, order: 1, parentId: "vlsi", resumeTitle: "RTL Design Engineer" },
+    { id: "verification", name: "Verification", slug: "verification", enabled: true, order: 2, parentId: "vlsi", resumeTitle: "Design Verification Engineer" },
+    { id: "fpga", name: "FPGA Design", slug: "fpga", enabled: true, order: 3, parentId: "vlsi", resumeTitle: "FPGA Design Engineer" },
+    { id: "embedded", name: "Embedded", slug: "embedded", enabled: true, order: 4, resumeTitle: "Embedded Systems Engineer" },
+    { id: "pcb", name: "PCB Design", slug: "pcb", enabled: true, order: 5, resumeTitle: "PCB Design Engineer" },
   ],
   skills: [
     // HDL / HVL
@@ -140,6 +140,87 @@ export const seedData: AppData = {
         { id: "prb-alu-2", text: "HVL: SystemVerilog", priority: 1, domainIds: ["fpga", "vlsi"] },
         { id: "prb-alu-3", text: "Protocols: UART", priority: 2, domainIds: ["fpga", "embedded", "vlsi"] },
         { id: "prb-alu-4", text: "EDA Tools: ModelSim, Xilinx Vivado, Arduino IDE", priority: 2, domainIds: ["fpga", "embedded", "vlsi"] },
+      ],
+    },
+    // --- Projects sourced from github.com/ItzzInfinity (original, non-fork repos) ---
+    {
+      id: "prj-100rtl",
+      title: "100 Days of RTL",
+      domainIds: ["vlsi", "rtl", "verification", "fpga"],
+      sourceLink: "https://github.com/ItzzInfinity/100-days-of-RTL",
+      tools: ["Verilog", "ModelSim", "Vivado", "Quartus Prime", "Gowin EDA"],
+      bullets: [
+        { id: "prb-100rtl-1", text: "Designed and verified a new RTL block every day for 100 days straight — counters, FSMs, arbiters, and protocol blocks with self-checking testbenches.", priority: 1, domainIds: ["vlsi", "rtl", "verification", "fpga"] },
+      ],
+    },
+    {
+      id: "prj-verilog-practice",
+      title: "Verilog Practice",
+      domainIds: ["vlsi", "rtl"],
+      sourceLink: "https://github.com/ItzzInfinity/Verilog-Practice",
+      tools: ["Verilog"],
+      bullets: [
+        { id: "prb-vp-1", text: "Verilog implementations of digital circuits from Salivahanan's Digital Circuits & Design.", priority: 2, domainIds: ["vlsi", "rtl"] },
+      ],
+    },
+    {
+      id: "prj-spo2",
+      title: "IoT Pulse Oximeter (SpO2 + Heart Rate)",
+      domainIds: ["embedded", "pcb"],
+      sourceLink: "https://github.com/ItzzInfinity/IoT-Based-SpO2-and-Pulse-Oximeter-with-MAX30102",
+      tools: ["ESP8266", "MAX30102", "I2C", "SSD1306 OLED"],
+      bullets: [
+        { id: "prb-spo2-1", text: "Portable SpO2 and heart-rate monitor using an ESP8266 and MAX30102 bio-sensor over I2C with a live OLED readout.", priority: 1, domainIds: ["embedded", "pcb"] },
+      ],
+    },
+    {
+      id: "prj-siggen",
+      title: "ESP32 Signal Generator",
+      domainIds: ["embedded", "pcb"],
+      sourceLink: "https://github.com/ItzzInfinity/Signal-Generator-Using-ESP32",
+      tools: ["ESP32", "AD9833 DDS", "Wi-Fi", "I2C"],
+      bullets: [
+        { id: "prb-siggen-1", text: "Web-controlled DDS function generator (sine / square / triangle) built on an ESP32 driving an AD9833 module.", priority: 1, domainIds: ["embedded", "pcb"] },
+      ],
+    },
+    {
+      id: "prj-fmradio",
+      title: "ESP FM Radio Receiver",
+      domainIds: ["embedded", "pcb"],
+      sourceLink: "https://github.com/ItzzInfinity/FM-Radio-Using-ESP-12E-and-RDA5807M",
+      tools: ["ESP-12E", "RDA5807M", "PAM8403", "TP4056", "I2C"],
+      bullets: [
+        { id: "prb-fm-1", text: "Battery-powered FM receiver with ESP-12E + RDA5807M tuner, PAM8403 audio amplifier, and TP4056 Li-ion charging.", priority: 2, domainIds: ["embedded", "pcb"] },
+      ],
+    },
+    {
+      id: "prj-thermo",
+      title: "Digital Thermohygrometer",
+      domainIds: ["embedded"],
+      sourceLink: "https://github.com/ItzzInfinity/The-most-Simple-Digital-Thermohygrometer",
+      tools: ["ESP-01", "DHT11", "SSD1306 OLED"],
+      bullets: [
+        { id: "prb-thermo-1", text: "Temperature and humidity monitor with heat-index computation on an ESP-01, DHT11 sensor, and OLED display.", priority: 2, domainIds: ["embedded"] },
+      ],
+    },
+    {
+      id: "prj-clock",
+      title: "WiFi NTP 7-Segment Clock",
+      domainIds: ["embedded"],
+      sourceLink: "https://github.com/ItzzInfinity/clock-project",
+      tools: ["ESP32", "MAX7219", "SPI", "NTP"],
+      bullets: [
+        { id: "prb-clock-1", text: "WiFi-synchronized digital clock pulling NTP time and updating MAX7219 7-segment displays over SPI in real time.", priority: 2, domainIds: ["embedded"] },
+      ],
+    },
+    {
+      id: "prj-framebuffer",
+      title: "ESP ST7735 Framebuffer Driver",
+      domainIds: ["embedded"],
+      sourceLink: "https://github.com/ItzzInfinity/ESP-FrameBuffer",
+      tools: ["ESP", "ST7735", "SPI", "C++"],
+      bullets: [
+        { id: "prb-fb-1", text: "Framebuffer display driver for a 1.8\" ST7735 TFT on ESP, enabling smoother partial-screen updates.", priority: 3, domainIds: ["embedded"] },
       ],
     },
   ],

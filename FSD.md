@@ -256,3 +256,8 @@ The first working version should include:
   - Downloaded sample resume is not looking good. Texts are overlapping. Need to fix the layout of the resume. 
   - Make a script which will extract the template which I will give and that's how I want the resume to look like.  
   - `template.pdf` - This is the template which I want to use for the resume. Need to extract the formatting from it and use it in the resume generation.
+  ---
+  - Need to hide Download button too from home page same as settings
+  - Need to visit `https://github.com/ItzzInfinity?tab=repositories` my repos and add them accordingly to respective domains.
+  - VLSI Resume is currently overflowing - Detect if Overflow detected suggest 2 page view - 1 or 2 page style depends up to user. 
+  - When changing domains. Domain name under Name is not changing - need to fix.

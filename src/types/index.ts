@@ -17,6 +17,9 @@ export interface Domain {
   enabled: boolean;
   order: number;
   parentId?: string;
+  // Title shown under the name on the resume when this domain is selected.
+  // Falls back to profile.title when unset.
+  resumeTitle?: string;
 }
 
 export interface Skill {
