@@ -259,11 +259,10 @@ The first working version should include:
   - Need to hide Download button too from home page same as settings - **Done**
   - Need to visit `https://github.com/ItzzInfinity?tab=repositories` my repos and add them accordingly to respective domains. - **Done**
   - VLSI Resume is currently overflowing - Detect if Overflow detected suggest 2 page view - 1 or 2 page style depends up to user. - **Done**
-  - When changing domains (Radio Buttons). Domain name under Name in resume is not changing - **Done**
   - for projects in the resume one single line is divided into 2 lines which is causing 2 page overflow by 6 to 11 lines. Need to fix it. - **Done** (preview & PDF now share a conditional 2-col / full-width rule so long bullets no longer wrap in a narrow column; the two renderers' heights match so 1-page auto-fit is accurate)
   - If the page is not full, then the empty space should be filled with more bullets from the lower priority sections. - **Handled** (auto-fit only ever removes the minimum bullets needed to fit, and shows everything otherwise, so the page is always as full as available content allows; there is no separate hidden pool to pad from)
   - VLSI should have a sub radio button for RTL, Verification, FPGA. So that I can select the sub domain and generate the resume accordingly. - **Done**
   - In about section, I want to add full work experience too. - **Done**
   ---
-  - in About Education section duration/years should be displayed right side as same as work experience.
-  - 
+  - in About Education section duration/years should be displayed right side as same as work experience. - **Done**
+  - When changing domains (Radio Buttons). Domain name under Name in resume is not changing - **Reopened** - This is working in localhost but not in the deployed version. Need to check why it is not working in the deployed version. - **Fixed** (root cause: a stale localStorage cache on the deployed origin shallow-overrode the new seed `domains` array, dropping `resumeTitle`. storage.ts now stamps a seed signature and auto-discards stale caches when seed.ts changes.)

@@ -71,10 +71,15 @@ export default function AboutPage() {
         <h2 className="text-xl font-semibold text-cyan-400 mb-4">Education</h2>
         {education.map((edu) => (
           <div key={edu.id} className="mb-4 last:mb-0">
-            <p className="font-semibold text-white">{edu.degree}</p>
+            <div className="flex justify-between items-start gap-4">
+              <p className="font-semibold text-white">{edu.degree}</p>
+              <p className="text-slate-400 text-sm whitespace-nowrap">
+                {edu.startDate} – {edu.endDate}
+              </p>
+            </div>
             <p className="text-slate-300">{edu.institute}</p>
             <p className="text-slate-400 text-sm">
-              {edu.startDate} – {edu.endDate} · {edu.location}
+              {edu.location}
               {edu.score && ` · ${edu.score}`}
             </p>
           </div>
