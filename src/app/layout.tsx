@@ -3,7 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 
 export const metadata: Metadata = {
-  title: "Portfolio & Resume Builder",
+  title: "ItzzInfinity Portfolio",
   description: "Personal portfolio and dynamic resume generator",
 };
 
