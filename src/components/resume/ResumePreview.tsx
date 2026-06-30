@@ -140,6 +140,10 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
             const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
               (b) => !hiddenBulletIds.has(b.id)
             );
+            const twoCol = bulletsUseTwoCols(bullets);
+            const mid = Math.ceil(bullets.length / 2);
+            const left = bullets.slice(0, mid);
+            const right = bullets.slice(mid);
             return (
               <div key={proj.id} style={{ marginBottom: "6px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -153,11 +157,26 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
                     <span style={{ color: "#2563EB", fontSize: "9px" }}>{proj.sourceLink}</span>
                   )}
                 </div>
-                <ul style={{ margin: "2px 0 0 14px", padding: 0 }}>
-                  {bullets.map((b) => (
-                    <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
-                  ))}
-                </ul>
+                {twoCol ? (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <ul style={{ width: "48%", margin: "2px 0 0 14px", padding: 0 }}>
+                      {left.map((b) => (
+                        <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
+                      ))}
+                    </ul>
+                    <ul style={{ width: "48%", margin: "2px 0 0 14px", padding: 0 }}>
+                      {right.map((b) => (
+                        <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <ul style={{ margin: "2px 0 0 14px", padding: 0 }}>
+                    {bullets.map((b) => (
+                      <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             );
           })}
@@ -238,6 +257,14 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
     </div>
   );
 });
+
+// Mirror of the same rule in ResumeDocument: two columns only when every
+// bullet fits one line in a half-width column, so the on-screen overflow
+// measurement matches the generated PDF.
+const SHORT_BULLET_MAX = 48;
+function bulletsUseTwoCols(bullets: { text: string }[]): boolean {
+  return bullets.length >= 3 && bullets.every((b) => b.text.length <= SHORT_BULLET_MAX);
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

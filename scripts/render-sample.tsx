@@ -14,8 +14,10 @@ import { filterByDomain } from "@/lib/filter";
 
 async function main() {
   const domainId = process.argv[2] || "vlsi";
+  const domain = seedData.domains.find((d) => d.id === domainId);
   const props = {
     domainId,
+    headerTitle: domain?.resumeTitle ?? seedData.profile.title,
     profile: seedData.profile,
     skills: filterByDomain(seedData.skills, domainId),
     experience: filterByDomain(seedData.experience, domainId),

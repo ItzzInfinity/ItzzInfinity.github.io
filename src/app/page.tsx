@@ -25,12 +25,6 @@ export default function HomePage() {
           >
             About Me
           </Link>
-          <Link
-            href="/download"
-            className="border border-cyan-500 text-cyan-400 hover:bg-cyan-500/10 font-semibold px-6 py-3 rounded-lg transition-colors"
-          >
-            Download Resume
-          </Link>
         </div>
       </div>
 

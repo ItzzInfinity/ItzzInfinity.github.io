@@ -58,7 +58,7 @@ python3 scripts/extract_template.py [template.pdf]       # -> parsed/template_sp
 
 ### State (`src/store/useResumeStore.ts`)
 
-One Zustand store holds the whole data model (`profile`, `domains`, `skills`, `experience`, `education`, `projects`, `certifications`, `awards`, `languages`, `hobbies`, `references`), persisted to `localStorage` under `resume-builder-v1` via `src/lib/storage.ts` (abstracted so it can later become a remote API). Seed/placeholder data is `src/lib/seed.ts`; the canonical real profile lives in `~/Downloads/all_resumes/master_profile.json` and is hand-merged into the seed.
+One Zustand store holds the whole data model (`profile`, `domains`, `skills`, `experience`, `education`, `projects`, `certifications`, `awards`, `languages`, `hobbies`, `strengths`, `references`), persisted to `localStorage` under `resume-builder-v2` via `src/lib/storage.ts` (abstracted so it can later become a remote API). `loadData` merges saved data over the seed so new fields are never missing; **bump the `STORAGE_KEY` version whenever the seed shape/content changes** or clients keep stale data. `src/lib/seed.ts` holds the real profile data for Anjan Prasad (merged from `~/Downloads/all_resumes/master_profile.json` + `template.pdf`; project source links come from github.com/ItzzInfinity repos). Each `Domain` carries an optional `resumeTitle` shown under the name when that domain is selected.
 
 ### Domain filtering (`src/lib/filter.ts`)
 
@@ -66,18 +66,20 @@ Every entity except `profile`/`education` carries `domainIds: string[]`. `filter
 
 ### Two resume renderers — keep them in sync
 
-- **`src/components/resume/ResumePreview.tsx`** — HTML/CSS, used for the on-screen preview **and** for one-page overflow measurement. Rendered at true A4 px (`794×1123`, A4 @96dpi) with `overflow:hidden`; the on-screen scaling is a CSS `transform` so it doesn't affect measurement.
+- **`src/components/resume/ResumePreview.tsx`** — HTML/CSS, used for the on-screen preview **and** for one-page overflow measurement. Rendered at true A4 px (`794×1123`, A4 @96dpi); `singlePage` prop toggles the `maxHeight`/`overflow:hidden` clip (off in 2-page mode so it grows). The on-screen scaling is a CSS `transform` so it doesn't affect measurement. `headerTitle` overrides `profile.title` (per-domain titles).
 - **`src/components/resume/ResumeDocument.tsx`** — `@react-pdf/renderer` vector document, the actual **download**. Layout mirrors `template.pdf` per `parsed/template_spec.json` (A4, 20pt bold name, bold uppercase section headings with hairline rules, two-column skills/projects, right-aligned dates, clickable email/LinkedIn/GitHub/Source links). Uses built-in **Helvetica** (Inter has no reliable static TTF to bundle; Helvetica is visually near-identical and avoids runtime font fetches in the static export).
+
+**Project bullets use conditional columns** (`bulletsUseTwoCols`, duplicated in both files and kept in sync via `SHORT_BULLET_MAX`): two columns only when a project has ≥3 bullets that are all short (label-style like `HDL: Verilog`); long descriptive bullets render full width so a single line never wraps. This rule MUST be identical in both renderers — when they diverged (preview single-column, PDF two-column) the preview under-measured height and the downloaded PDF silently overflowed to a 2nd page.
 
 Both are pure prop-driven components and receive the same filtered data + `hiddenBulletIds`, so the downloaded PDF matches what auto-fit decided on screen. `scripts/render-sample.tsx` imports the same `ResumeDocument` so QA reflects production output exactly.
 
-### Auto-fit (`src/app/download/page.tsx` + `src/lib/autofit.ts`)
+### Auto-fit & page mode (`src/app/download/page.tsx` + `src/lib/autofit.ts`)
 
-Convergent loop, **not** rAF/timeout (the earlier rAF version caused a runaway re-render loop that broke navigation away from `/download`):
+The Download page domain selector lists top-level domains with their sub-domains indented as radios (VLSI → RTL / Verification / FPGA); `selectedDomain` can be any domain id and all filtering/title logic keys off it. The page also has a 1-page / 2-page toggle (`pageMode`). **2-page mode** disables trimming and lets react-pdf paginate automatically (the HTML preview is unclipped). **1-page mode** runs the convergent auto-fit loop — **not** rAF/timeout (the earlier rAF version caused a runaway re-render loop that broke navigation away from `/download`):
 
 1. `removableOrder` = all domain bullet ids sorted lowest-priority-first (highest `priority` number first).
 2. A `useLayoutEffect` keyed on `[fitting, hiddenBulletIds.length, removableOrder]` measures `isOverflowing(previewRef)`; if overflowing and bullets remain, it hides one more (`slice(0, len+1)`), which re-renders and re-measures.
-3. When it fits or `removableOrder` is exhausted, it sets `fitting=false` and stops. A separate effect resets the pass when domain/customText/content changes.
+3. When it fits or `removableOrder` is exhausted, it sets `fitting=false`, and sets `overflowed` if it still overflows — which surfaces a banner suggesting the 2-page layout. A separate effect resets the pass when domain/customText/pageMode/content changes.
 
 When editing this loop, preserve termination: never make the layout effect depend on values it also mutates without bounding them.
 
@@ -91,7 +93,7 @@ Download handler dynamically imports `@react-pdf/renderer` + `ResumeDocument`, b
 
 ## Key Constraints
 
-- Resume must always be exactly one page (A4); `ResumeDocument` layout fidelity is judged against `template.pdf`.
-- `/settings` and `/download` are private — no public links.
+- Resume defaults to one page (A4) via auto-fit; users can opt into a 2-page layout. `ResumeDocument` layout fidelity is judged against `template.pdf`.
+- `/settings` and `/download` are private — **no public links anywhere** (the home page Download button was deliberately removed; reach them by typing the path).
 - Project headings show a `Source` link on the right.
 - Bullet priority is user-editable: lower number = higher priority = kept longer when trimming.

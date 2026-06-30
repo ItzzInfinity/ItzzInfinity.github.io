@@ -132,6 +132,16 @@ function chunkTwo<T>(items: T[]): [T[], T[]] {
   return [items.slice(0, mid), items.slice(mid)];
 }
 
+// Two columns only when every bullet is short enough to fit one line in a
+// half-width column. Long descriptive bullets render full width so a single
+// line never wraps (which previously caused the PDF to overflow to 2 pages).
+// Must match the same rule in ResumePreview so on-screen overflow measurement
+// matches the generated PDF.
+const SHORT_BULLET_MAX = 48;
+function bulletsUseTwoCols(bullets: { text: string }[]): boolean {
+  return bullets.length >= 3 && bullets.every((b) => b.text.length <= SHORT_BULLET_MAX);
+}
+
 export default function ResumeDocument(props: ResumeDocumentProps) {
   const {
     domainId,
@@ -167,7 +177,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
         {/* Header */}
         <View>
           <Text style={styles.name}>{profile.name}</Text>
-          <Text style={styles.title}>{profile.title}</Text>
+          <Text style={styles.title}>{headerTitle ?? profile.title}</Text>
           <View style={styles.contactRow}>
             {profile.phone ? (
               <Text style={styles.contactItem}>{profile.phone}</Text>
@@ -297,6 +307,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
               const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
                 (b) => !hidden.has(b.id)
               );
+              const twoCol = bulletsUseTwoCols(bullets);
               const [left, right] = chunkTwo(bullets);
               return (
                 <View key={proj.id} style={{ marginBottom: 4 }}>
@@ -316,18 +327,22 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
                       </Link>
                     ) : null}
                   </View>
-                  <View style={styles.twoCol}>
-                    <View style={styles.col}>
-                      {left.map((b) => (
-                        <Bullet key={b.id}>{b.text}</Bullet>
-                      ))}
+                  {twoCol ? (
+                    <View style={styles.twoCol}>
+                      <View style={styles.col}>
+                        {left.map((b) => (
+                          <Bullet key={b.id}>{b.text}</Bullet>
+                        ))}
+                      </View>
+                      <View style={styles.col}>
+                        {right.map((b) => (
+                          <Bullet key={b.id}>{b.text}</Bullet>
+                        ))}
+                      </View>
                     </View>
-                    <View style={styles.col}>
-                      {right.map((b) => (
-                        <Bullet key={b.id}>{b.text}</Bullet>
-                      ))}
-                    </View>
-                  </View>
+                  ) : (
+                    bullets.map((b) => <Bullet key={b.id}>{b.text}</Bullet>)
+                  )}
                 </View>
               );
             })}

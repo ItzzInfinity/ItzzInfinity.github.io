@@ -2,7 +2,7 @@
 import { useResumeStore } from "@/store/useResumeStore";
 
 export default function AboutPage() {
-  const { profile, education } = useResumeStore();
+  const { profile, education, experience } = useResumeStore();
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -40,6 +40,31 @@ export default function AboutPage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section className="bg-slate-800 border border-slate-700 rounded-xl p-6 mb-8">
+        <h2 className="text-xl font-semibold text-cyan-400 mb-4">Work Experience</h2>
+        {experience.map((exp) => (
+          <div key={exp.id} className="mb-6 last:mb-0">
+            <div className="flex justify-between items-start gap-4">
+              <p className="font-semibold text-white">
+                {exp.role}
+                <span className="text-slate-400 font-normal"> · {exp.company}</span>
+              </p>
+              <p className="text-slate-400 text-sm whitespace-nowrap">
+                {exp.startDate} – {exp.endDate}
+              </p>
+            </div>
+            {exp.location && <p className="text-slate-500 text-sm mb-2">{exp.location}</p>}
+            {exp.bullets.length > 0 && (
+              <ul className="list-disc list-inside space-y-1">
+                {exp.bullets.map((b) => (
+                  <li key={b.id} className="text-slate-300 text-sm">{b.text}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </section>
 
       <section className="bg-slate-800 border border-slate-700 rounded-xl p-6">

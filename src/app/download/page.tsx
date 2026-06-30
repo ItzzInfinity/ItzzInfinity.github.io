@@ -7,6 +7,8 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import { filterByDomain, filterBulletsByDomain } from "@/lib/filter";
 import { isOverflowing } from "@/lib/autofit";
 
+type PageMode = "1" | "2";
+
 export default function DownloadPage() {
   const store = useResumeStore();
   const topLevelDomains = useMemo(
@@ -15,10 +17,14 @@ export default function DownloadPage() {
   );
   const [selectedDomain, setSelectedDomain] = useState(topLevelDomains[0]?.id ?? "");
   const [customText, setCustomText] = useState("");
+  const [pageMode, setPageMode] = useState<PageMode>("1");
   const [hiddenBulletIds, setHiddenBulletIds] = useState<string[]>([]);
   const [fitting, setFitting] = useState(true);
+  const [overflowed, setOverflowed] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  const singlePage = pageMode === "1";
 
   // Memoised so identities are stable across renders (prevents effect thrash).
   const filteredSkills = useMemo(() => filterByDomain(store.skills, selectedDomain), [store.skills, selectedDomain]);
@@ -26,6 +32,12 @@ export default function DownloadPage() {
   const filteredProjects = useMemo(() => filterByDomain(store.projects, selectedDomain), [store.projects, selectedDomain]);
   const filteredCerts = useMemo(() => filterByDomain(store.certifications, selectedDomain), [store.certifications, selectedDomain]);
   const filteredAwards = useMemo(() => filterByDomain(store.awards, selectedDomain), [store.awards, selectedDomain]);
+
+  // Per-domain title shown under the name; falls back to the profile title.
+  const headerTitle = useMemo(() => {
+    const d = store.domains.find((x) => x.id === selectedDomain);
+    return d?.resumeTitle ?? store.profile.title;
+  }, [store.domains, selectedDomain, store.profile.title]);
 
   // Ordered list of bullet ids eligible for trimming: lowest priority first.
   const removableOrder = useMemo(() => {
@@ -39,14 +51,18 @@ export default function DownloadPage() {
     return all.sort((a, b) => b.priority - a.priority).map((x) => x.id);
   }, [filteredProjects, filteredExperience, selectedDomain]);
 
-  // Restart the fit pass whenever the resume content changes.
+  // Restart the fit pass whenever the resume content or page mode changes.
+  // Auto-fit only runs in single-page mode; 2-page mode lets content flow.
   useEffect(() => {
     setHiddenBulletIds([]);
-    setFitting(true);
-  }, [selectedDomain, customText, removableOrder]);
+    setOverflowed(false);
+    setFitting(singlePage);
+  }, [selectedDomain, customText, removableOrder, singlePage]);
 
-  // Convergent auto-fit: remove one lowest-priority bullet per render until the
-  // preview no longer overflows one A4 page (or nothing is left to trim).
+  // Convergent auto-fit (single-page only): remove one lowest-priority bullet
+  // per render until the preview fits one A4 page, or nothing is left to trim.
+  // If it still overflows after exhausting removable bullets, flag overflow so
+  // the user can switch to a 2-page layout.
   useLayoutEffect(() => {
     if (!fitting) return;
     const el = previewRef.current;
@@ -55,6 +71,7 @@ export default function DownloadPage() {
       setHiddenBulletIds(removableOrder.slice(0, hiddenBulletIds.length + 1));
     } else {
       setFitting(false);
+      setOverflowed(isOverflowing(el));
     }
   }, [fitting, hiddenBulletIds.length, removableOrder]);
 
@@ -78,7 +95,9 @@ export default function DownloadPage() {
         languages: store.languages,
         hobbies: store.hobbies,
         strengths: store.strengths,
-        hiddenBulletIds,
+        headerTitle,
+        // In 2-page mode nothing is trimmed; react-pdf paginates automatically.
+        hiddenBulletIds: singlePage ? hiddenBulletIds : [],
       };
       const element = React.createElement(mod.default, props) as React.ReactElement<DocumentProps>;
       const blob = await pdf(element).toBlob();
@@ -105,18 +124,59 @@ export default function DownloadPage() {
           <div>
             <p className="text-sm text-slate-400 uppercase tracking-wide mb-3">Select Domain</p>
             <div className="space-y-2">
-              {topLevelDomains.map((d) => (
-                <label key={d.id} className="flex items-center gap-3 cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="domain"
-                    value={d.id}
-                    checked={selectedDomain === d.id}
-                    onChange={() => setSelectedDomain(d.id)}
-                    className="accent-cyan-400"
-                  />
-                  <span className="text-slate-300 group-hover:text-white">{d.name}</span>
-                </label>
+              {topLevelDomains.map((d) => {
+                const subDomains = store.domains.filter((s) => s.parentId === d.id && s.enabled);
+                return (
+                  <div key={d.id} className="space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="radio"
+                        name="domain"
+                        value={d.id}
+                        checked={selectedDomain === d.id}
+                        onChange={() => setSelectedDomain(d.id)}
+                        className="accent-cyan-400"
+                      />
+                      <span className="text-slate-300 group-hover:text-white">{d.name}</span>
+                    </label>
+                    {subDomains.length > 0 && (
+                      <div className="ml-6 space-y-2 border-l border-slate-700 pl-3">
+                        {subDomains.map((s) => (
+                          <label key={s.id} className="flex items-center gap-3 cursor-pointer group">
+                            <input
+                              type="radio"
+                              name="domain"
+                              value={s.id}
+                              checked={selectedDomain === s.id}
+                              onChange={() => setSelectedDomain(s.id)}
+                              className="accent-cyan-400"
+                            />
+                            <span className="text-sm text-slate-400 group-hover:text-white">{s.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm text-slate-400 uppercase tracking-wide mb-2">Layout</p>
+            <div className="flex gap-2">
+              {(["1", "2"] as PageMode[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setPageMode(m)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    pageMode === m
+                      ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/50"
+                      : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200"
+                  }`}
+                >
+                  {m} Page{m === "2" ? "s" : ""}
+                </button>
               ))}
             </div>
           </div>
@@ -140,10 +200,24 @@ export default function DownloadPage() {
             {downloading ? "Generating PDF..." : "Download PDF"}
           </button>
 
-          {hiddenBulletIds.length > 0 && (
+          {singlePage && hiddenBulletIds.length > 0 && (
             <p className="text-xs text-amber-400">
               {hiddenBulletIds.length} low-priority bullet{hiddenBulletIds.length > 1 ? "s" : ""} trimmed to fit one page.
             </p>
+          )}
+
+          {singlePage && overflowed && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-amber-300">
+                This resume still overflows one page even after trimming. Switch to a 2-page layout to show everything.
+              </p>
+              <button
+                onClick={() => setPageMode("2")}
+                className="w-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold py-2 rounded-md transition-colors"
+              >
+                Use 2-page layout
+              </button>
+            </div>
           )}
         </aside>
 
@@ -164,7 +238,9 @@ export default function DownloadPage() {
               languages={store.languages}
               hobbies={store.hobbies}
               strengths={store.strengths}
-              hiddenBulletIds={new Set(hiddenBulletIds)}
+              headerTitle={headerTitle}
+              singlePage={singlePage}
+              hiddenBulletIds={new Set(singlePage ? hiddenBulletIds : [])}
             />
           </div>
         </div>
