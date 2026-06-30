@@ -48,6 +48,8 @@ export interface ResumeDocumentProps {
   languages: Language[];
   hobbies: Hobby[];
   strengths?: Strength[];
+  // Title shown under the name; overrides profile.title (per-domain titles).
+  headerTitle?: string;
   hiddenBulletIds?: string[];
 }
 
@@ -144,6 +146,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
     languages,
     hobbies,
     strengths = [],
+    headerTitle,
     hiddenBulletIds = [],
   } = props;
 

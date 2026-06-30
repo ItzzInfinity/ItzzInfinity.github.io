@@ -27,6 +27,10 @@ interface Props {
   languages: Language[];
   hobbies: Hobby[];
   strengths?: Strength[];
+  // Title shown under the name; overrides profile.title (used for per-domain titles).
+  headerTitle?: string;
+  // When false, the page is allowed to grow past one A4 (2-page mode).
+  singlePage?: boolean;
   hiddenBulletIds?: Set<string>;
 }
 
@@ -44,6 +48,8 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
     languages,
     hobbies,
     strengths = [],
+    headerTitle,
+    singlePage = true,
     hiddenBulletIds = new Set(),
   },
   ref
@@ -58,13 +64,22 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
   return (
     <div
       ref={ref}
-      className="bg-white text-gray-900 overflow-hidden"
-      style={{ width: "794px", minHeight: "1123px", maxHeight: "1123px", fontFamily: "Arial, sans-serif", fontSize: "10px", padding: "32px 40px", boxSizing: "border-box" }}
+      className="bg-white text-gray-900"
+      style={{
+        width: "794px",
+        minHeight: "1123px",
+        maxHeight: singlePage ? "1123px" : undefined,
+        overflow: singlePage ? "hidden" : "visible",
+        fontFamily: "Arial, sans-serif",
+        fontSize: "10px",
+        padding: "32px 40px",
+        boxSizing: "border-box",
+      }}
     >
       {/* Header */}
       <header className="mb-3 border-b-2 border-gray-800 pb-3">
         <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>{profile.name}</h1>
-        <p style={{ fontSize: "12px", color: "#374151", marginTop: "2px" }}>{profile.title}</p>
+        <p style={{ fontSize: "12px", color: "#374151", marginTop: "2px" }}>{headerTitle ?? profile.title}</p>
         <div style={{ display: "flex", gap: "16px", marginTop: "4px", flexWrap: "wrap", fontSize: "9px", color: "#4B5563" }}>
           {profile.email && <span>{profile.email}</span>}
           {profile.phone && <span>{profile.phone}</span>}
