@@ -5,3 +5,10 @@ node_modules
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# Generated working data from the PDF extraction scripts (contains personal
+# data; regenerate locally with scripts/extract_resumes.py).
+/parsed/
+# Python
+__pycache__/
+*.pyc

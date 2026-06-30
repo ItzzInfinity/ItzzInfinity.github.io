@@ -241,3 +241,18 @@ The first working version should include:
 9. Add PDF download.
 10. Polish responsive design and test end-to-end.
 11. Add public/private visibility controls for portfolio sections. - Download / Settings Must not be public. - Need to add an easter egg to get to the settings page.
+
+
+## Steps Completed
+1. Created a basic project structure with routing for `Home`, `About`, domain pages, `Settings`, and `Download`.
+2. Filled it like lorem ipsum for now. 
+
+## What I need 
+- Need to parse PDFs and extract the content from it. `/home/itzzinfinity/Downloads/all_resumes/` - This is the path where all the resumes are stored. Need to extract the content from it and store it in a structured format like JSON or CSV.
+- Need to maintain hyperlinks too which are embedded in the PDF. Need to extract the content from the PDF and store it in a structured format.
+- There are Few Issues in the MVP which I need to fix like 
+  - After going to the `Download` page, if I click on the `Home` or `About` page, it is not loading the content. 
+  - Make just the minimum file which will be hosted in the github pages. So that I can host it in the github pages. I dont think the current project is ready to be hosted in the github pages. 
+  - Downloaded sample resume is not looking good. Texts are overlapping. Need to fix the layout of the resume. 
+  - Make a script which will extract the template which I will give and that's how I want the resume to look like.  
+  - `template.pdf` - This is the template which I want to use for the resume. Need to extract the formatting from it and use it in the resume generation.

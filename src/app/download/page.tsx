@@ -1,79 +1,94 @@
 "use client";
-import { useRef, useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useMemo, useEffect, useLayoutEffect } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
 import ResumePreview from "@/components/resume/ResumePreview";
+import type { ResumeDocumentProps } from "@/components/resume/ResumeDocument";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { filterByDomain, filterBulletsByDomain } from "@/lib/filter";
 import { isOverflowing } from "@/lib/autofit";
 
 export default function DownloadPage() {
   const store = useResumeStore();
-  const topLevelDomains = store.domains.filter((d) => !d.parentId && d.enabled);
+  const topLevelDomains = useMemo(
+    () => store.domains.filter((d) => !d.parentId && d.enabled),
+    [store.domains]
+  );
   const [selectedDomain, setSelectedDomain] = useState(topLevelDomains[0]?.id ?? "");
   const [customText, setCustomText] = useState("");
-  const [hiddenBulletIds, setHiddenBulletIds] = useState<Set<string>>(new Set());
+  const [hiddenBulletIds, setHiddenBulletIds] = useState<string[]>([]);
+  const [fitting, setFitting] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const filteredSkills = filterByDomain(store.skills, selectedDomain);
-  const filteredExperience = filterByDomain(store.experience, selectedDomain);
-  const filteredProjects = filterByDomain(store.projects, selectedDomain);
-  const filteredCerts = filterByDomain(store.certifications, selectedDomain);
-  const filteredAwards = filterByDomain(store.awards, selectedDomain);
+  // Memoised so identities are stable across renders (prevents effect thrash).
+  const filteredSkills = useMemo(() => filterByDomain(store.skills, selectedDomain), [store.skills, selectedDomain]);
+  const filteredExperience = useMemo(() => filterByDomain(store.experience, selectedDomain), [store.experience, selectedDomain]);
+  const filteredProjects = useMemo(() => filterByDomain(store.projects, selectedDomain), [store.projects, selectedDomain]);
+  const filteredCerts = useMemo(() => filterByDomain(store.certifications, selectedDomain), [store.certifications, selectedDomain]);
+  const filteredAwards = useMemo(() => filterByDomain(store.awards, selectedDomain), [store.awards, selectedDomain]);
 
-  const runAutoFit = useCallback(() => {
-    const el = previewRef.current;
-    if (!el) return;
-
-    // Collect all optional bullets sorted by priority desc (lowest priority = removed first)
-    const allBullets: { id: string; priority: number }[] = [];
+  // Ordered list of bullet ids eligible for trimming: lowest priority first.
+  const removableOrder = useMemo(() => {
+    const all: { id: string; priority: number }[] = [];
     for (const proj of filteredProjects) {
-      for (const b of filterBulletsByDomain(proj.bullets, selectedDomain)) {
-        allBullets.push({ id: b.id, priority: b.priority });
-      }
+      for (const b of filterBulletsByDomain(proj.bullets, selectedDomain)) all.push({ id: b.id, priority: b.priority });
     }
     for (const exp of filteredExperience) {
-      for (const b of filterBulletsByDomain(exp.bullets, selectedDomain)) {
-        allBullets.push({ id: b.id, priority: b.priority });
-      }
+      for (const b of filterBulletsByDomain(exp.bullets, selectedDomain)) all.push({ id: b.id, priority: b.priority });
     }
-
-    // Sort descending by priority number (higher number = lower priority = trimmed first)
-    const sorted = [...allBullets].sort((a, b) => b.priority - a.priority);
-    const hidden = new Set<string>();
-
-    // Remove bullets iteratively until it fits or we've removed all
-    let idx = 0;
-    const check = () => {
-      if (!isOverflowing(el) || idx >= sorted.length) {
-        setHiddenBulletIds(new Set(hidden));
-        return;
-      }
-      hidden.add(sorted[idx].id);
-      idx++;
-      setHiddenBulletIds(new Set(hidden));
-      requestAnimationFrame(check);
-    };
-    requestAnimationFrame(check);
+    return all.sort((a, b) => b.priority - a.priority).map((x) => x.id);
   }, [filteredProjects, filteredExperience, selectedDomain]);
 
+  // Restart the fit pass whenever the resume content changes.
   useEffect(() => {
-    setHiddenBulletIds(new Set());
-    setTimeout(runAutoFit, 100);
-  }, [selectedDomain, customText, runAutoFit]);
+    setHiddenBulletIds([]);
+    setFitting(true);
+  }, [selectedDomain, customText, removableOrder]);
+
+  // Convergent auto-fit: remove one lowest-priority bullet per render until the
+  // preview no longer overflows one A4 page (or nothing is left to trim).
+  useLayoutEffect(() => {
+    if (!fitting) return;
+    const el = previewRef.current;
+    if (!el) return;
+    if (isOverflowing(el) && hiddenBulletIds.length < removableOrder.length) {
+      setHiddenBulletIds(removableOrder.slice(0, hiddenBulletIds.length + 1));
+    } else {
+      setFitting(false);
+    }
+  }, [fitting, hiddenBulletIds.length, removableOrder]);
 
   async function handleDownload() {
-    if (!previewRef.current) return;
     setDownloading(true);
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const { default: jsPDF } = await import("jspdf");
-      const canvas = await html2canvas(previewRef.current, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-      pdf.addImage(imgData, "PNG", 0, 0, pdfW, pdfH);
-      pdf.save(`${store.profile.name.replace(/\s+/g, "_")}_${selectedDomain}_resume.pdf`);
+      const [{ pdf }, mod] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/resume/ResumeDocument"),
+      ]);
+      const props: ResumeDocumentProps = {
+        domainId: selectedDomain,
+        customText,
+        profile: store.profile,
+        skills: filteredSkills,
+        experience: filteredExperience,
+        education: store.education,
+        projects: filteredProjects,
+        certifications: filteredCerts,
+        awards: filteredAwards,
+        languages: store.languages,
+        hobbies: store.hobbies,
+        hiddenBulletIds,
+      };
+      const element = React.createElement(mod.default, props) as React.ReactElement<DocumentProps>;
+      const blob = await pdf(element).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${store.profile.name.replace(/\s+/g, "_")}_${selectedDomain}_resume.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } finally {
       setDownloading(false);
     }
@@ -124,16 +139,16 @@ export default function DownloadPage() {
             {downloading ? "Generating PDF..." : "Download PDF"}
           </button>
 
-          {hiddenBulletIds.size > 0 && (
+          {hiddenBulletIds.length > 0 && (
             <p className="text-xs text-amber-400">
-              {hiddenBulletIds.size} low-priority bullet{hiddenBulletIds.size > 1 ? "s" : ""} trimmed to fit one page.
+              {hiddenBulletIds.length} low-priority bullet{hiddenBulletIds.length > 1 ? "s" : ""} trimmed to fit one page.
             </p>
           )}
         </aside>
 
         {/* Resume Preview */}
         <div className="flex-1 overflow-auto">
-          <div className="origin-top-left" style={{ transform: "scale(0.85)", transformOrigin: "top left" }}>
+          <div style={{ transform: "scale(0.85)", transformOrigin: "top left" }}>
             <ResumePreview
               ref={previewRef}
               domainId={selectedDomain}
@@ -147,7 +162,7 @@ export default function DownloadPage() {
               awards={filteredAwards}
               languages={store.languages}
               hobbies={store.hobbies}
-              hiddenBulletIds={hiddenBulletIds}
+              hiddenBulletIds={new Set(hiddenBulletIds)}
             />
           </div>
         </div>
