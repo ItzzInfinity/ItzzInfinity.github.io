@@ -77,6 +77,7 @@ export default function DownloadPage() {
         awards: filteredAwards,
         languages: store.languages,
         hobbies: store.hobbies,
+        strengths: store.strengths,
         hiddenBulletIds,
       };
       const element = React.createElement(mod.default, props) as React.ReactElement<DocumentProps>;
@@ -162,6 +163,7 @@ export default function DownloadPage() {
               awards={filteredAwards}
               languages={store.languages}
               hobbies={store.hobbies}
+              strengths={store.strengths}
               hiddenBulletIds={new Set(hiddenBulletIds)}
             />
           </div>

@@ -101,6 +101,11 @@ export interface Hobby {
   name: string;
 }
 
+export interface Strength {
+  id: string;
+  name: string;
+}
+
 export interface Reference {
   id: string;
   name: string;
@@ -133,5 +138,6 @@ export interface AppData {
   awards: Award[];
   languages: Language[];
   hobbies: Hobby[];
+  strengths: Strength[];
   references: Reference[];
 }

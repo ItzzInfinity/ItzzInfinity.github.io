@@ -25,6 +25,7 @@ async function main() {
     awards: filterByDomain(seedData.awards, domainId),
     languages: seedData.languages,
     hobbies: seedData.hobbies,
+    strengths: seedData.strengths,
     hiddenBulletIds: [],
   };
   const out = "parsed/sample-resume.pdf";

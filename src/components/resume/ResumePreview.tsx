@@ -10,6 +10,7 @@ import {
   Award,
   Language,
   Hobby,
+  Strength,
 } from "@/types";
 import { filterBulletsByDomain } from "@/lib/filter";
 
@@ -25,6 +26,7 @@ interface Props {
   awards: Award[];
   languages: Language[];
   hobbies: Hobby[];
+  strengths?: Strength[];
   hiddenBulletIds?: Set<string>;
 }
 
@@ -41,6 +43,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
     awards,
     languages,
     hobbies,
+    strengths = [],
     hiddenBulletIds = new Set(),
   },
   ref
@@ -197,6 +200,17 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
               <span key={l.id}>{l.name} ({l.proficiency})</span>
             ))}
           </div>
+        </Section>
+      )}
+
+      {/* Strengths */}
+      {strengths.length > 0 && (
+        <Section title="STRENGTHS">
+          <ul style={{ margin: "0 0 0 14px", padding: 0 }}>
+            {strengths.map((s) => (
+              <li key={s.id} style={{ marginBottom: "1px" }}>{s.name}</li>
+            ))}
+          </ul>
         </Section>
       )}
 

@@ -31,6 +31,7 @@ import {
   Award,
   Language,
   Hobby,
+  Strength,
 } from "@/types";
 import { filterBulletsByDomain } from "@/lib/filter";
 
@@ -46,6 +47,7 @@ export interface ResumeDocumentProps {
   awards: Award[];
   languages: Language[];
   hobbies: Hobby[];
+  strengths?: Strength[];
   hiddenBulletIds?: string[];
 }
 
@@ -141,6 +143,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
     awards,
     languages,
     hobbies,
+    strengths = [],
     hiddenBulletIds = [],
   } = props;
 
@@ -372,6 +375,16 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
             <Text>
               {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
             </Text>
+          </View>
+        ) : null}
+
+        {/* Strengths */}
+        {strengths.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeading title="Strengths" />
+            {strengths.map((s) => (
+              <Bullet key={s.id}>{s.name}</Bullet>
+            ))}
           </View>
         ) : null}
 

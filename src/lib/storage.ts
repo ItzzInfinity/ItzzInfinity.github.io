@@ -1,14 +1,17 @@
 import { AppData } from "@/types";
 import { seedData } from "./seed";
 
-const STORAGE_KEY = "resume-builder-v1";
+// Bump this when the seed shape/content changes so clients pick up the new
+// data instead of stale localStorage from a previous version.
+const STORAGE_KEY = "resume-builder-v2";
 
 export function loadData(): AppData {
   if (typeof window === "undefined") return seedData;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return seedData;
-    return JSON.parse(raw) as AppData;
+    // Merge over the seed so fields added in newer versions are never missing.
+    return { ...seedData, ...(JSON.parse(raw) as Partial<AppData>) };
   } catch {
     return seedData;
   }
