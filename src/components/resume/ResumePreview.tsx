@@ -14,6 +14,21 @@ import {
 } from "@/types";
 import { filterBulletsByDomain } from "@/lib/filter";
 
+/**
+ * On-screen HTML mirror of ResumeDocument (the downloaded PDF).
+ *
+ * The DOWNLOADED PDF is the source of truth: this preview is a faithful HTML
+ * reproduction of it, used both to show the user what they'll get and to
+ * measure one-page overflow for auto-fit. Section order, names, per-item
+ * layout and — crucially — the type scale are kept proportional to the PDF so
+ * the measured height tracks the real PDF and the 1-page auto-fit is accurate.
+ *
+ * react-pdf lays out at A4 = 595.28 x 841.89 pt; this renders at A4 @96dpi =
+ * 794 x 1123 px. The two differ by exactly the pt->px factor (1.3333), so every
+ * size below is the PDF's pt value scaled by ~1.3333. Keep that relationship
+ * when editing either renderer, or the preview will stop predicting the PDF.
+ */
+
 interface Props {
   domainId: string;
   customText?: string;
@@ -33,6 +48,17 @@ interface Props {
   singlePage?: boolean;
   hiddenBulletIds?: Set<string>;
 }
+
+// PDF palette, mirrored so the preview reads like the download.
+const INK = "#1a1a1a";
+const MUTED = "#555555";
+const LINK = "#2563eb";
+const RULE = "#9ca3af";
+
+// A4 @96dpi. The PDF renders at A4 in points; this is the same page scaled by
+// the pt->px factor, so heights are directly comparable.
+export const A4_PX_HEIGHT = 1123;
+const A4_PX_WIDTH = 794;
 
 const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
   {
@@ -54,128 +80,195 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
   },
   ref
 ) {
-  const grouped = skills.reduce<Record<string, string[]>>((acc, sk) => {
-    if (!sk.visible) return acc;
-    acc[sk.category] = acc[sk.category] || [];
-    acc[sk.category].push(sk.name);
-    return acc;
-  }, {});
+  const visibleSkills = skills.filter((s) => s.visible);
+  const skillGroups = Object.entries(
+    visibleSkills.reduce<Record<string, string[]>>((acc, sk) => {
+      (acc[sk.category] ||= []).push(sk.name);
+      return acc;
+    }, {})
+  );
+  const [skillsLeft, skillsRight] = chunkTwo(skillGroups);
 
   return (
     <div
       ref={ref}
-      className="bg-white text-gray-900"
+      className="bg-white"
       style={{
-        width: "794px",
-        minHeight: "1123px",
-        maxHeight: singlePage ? "1123px" : undefined,
+        width: `${A4_PX_WIDTH}px`,
+        minHeight: `${A4_PX_HEIGHT}px`,
+        maxHeight: singlePage ? `${A4_PX_HEIGHT}px` : undefined,
         overflow: singlePage ? "hidden" : "visible",
-        fontFamily: "Arial, sans-serif",
-        fontSize: "10px",
-        padding: "32px 40px",
+        fontFamily: "Helvetica, Arial, sans-serif",
+        fontSize: "12px", // 9pt
+        lineHeight: 1.3,
+        color: INK,
+        // 26 / 34 / 24 pt padding, scaled to px.
+        padding: "35px 45px 32px 45px",
         boxSizing: "border-box",
       }}
     >
       {/* Header */}
-      <header className="mb-3 border-b-2 border-gray-800 pb-3">
-        <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>{profile.name}</h1>
-        <p style={{ fontSize: "12px", color: "#374151", marginTop: "2px" }}>{headerTitle ?? profile.title}</p>
-        <div style={{ display: "flex", gap: "16px", marginTop: "4px", flexWrap: "wrap", fontSize: "9px", color: "#4B5563" }}>
-          {profile.email && <span>{profile.email}</span>}
-          {profile.phone && <span>{profile.phone}</span>}
-          {profile.location && <span>{profile.location}</span>}
-          {profile.linkedin && <span>{profile.linkedin}</span>}
-          {profile.github && <span>{profile.github}</span>}
-          {profile.portfolio && <span>{profile.portfolio}</span>}
+      <div>
+        <div style={{ fontSize: "26px", fontWeight: 700 }}>{profile.name}</div>
+        <div style={{ fontSize: "15px", fontWeight: 700, marginTop: "1px" }}>
+          {headerTitle ?? profile.title}
         </div>
-      </header>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            marginTop: "5px",
+            fontSize: "12px",
+            color: MUTED,
+          }}
+        >
+          {profile.phone && <span style={{ marginRight: "16px" }}>{profile.phone}</span>}
+          {profile.email && (
+            <span style={{ marginRight: "16px", color: LINK }}>{profile.email}</span>
+          )}
+          {profile.linkedin && (
+            <span style={{ marginRight: "16px", color: LINK }}>LinkedIn</span>
+          )}
+          {profile.github && (
+            <span style={{ marginRight: "16px", color: LINK }}>GitHub</span>
+          )}
+          {profile.location && <span style={{ marginRight: "16px" }}>{profile.location}</span>}
+        </div>
+      </div>
+      <div style={{ borderBottom: `1.6px solid ${INK}`, marginTop: "8px", marginBottom: "8px" }} />
 
-      {customText && (
-        <p style={{ fontSize: "10px", marginBottom: "6px", color: "#374151" }}>{customText}</p>
-      )}
+      {customText && <p style={{ marginBottom: "8px" }}>{customText}</p>}
 
-      {/* Skills */}
-      {Object.keys(grouped).length > 0 && (
-        <Section title="SKILLS">
-          {Object.entries(grouped).map(([cat, names]) => (
-            <div key={cat} style={{ display: "flex", gap: "4px", marginBottom: "2px" }}>
-              <span style={{ fontWeight: 600, minWidth: "100px", color: "#374151" }}>{cat}:</span>
-              <span>{names.join(" · ")}</span>
-            </div>
-          ))}
+      {/* Summary */}
+      {profile.about && (
+        <Section title="Summary">
+          <div style={{ textAlign: "justify" }}>{profile.about}</div>
         </Section>
       )}
 
-      {/* Experience */}
+      {/* Work Experience */}
       {experience.length > 0 && (
-        <Section title="EXPERIENCE">
+        <Section title="Work Experience">
           {experience.map((exp) => {
             const bullets = filterBulletsByDomain(exp.bullets, domainId).filter(
               (b) => !hiddenBulletIds.has(b.id)
             );
             return (
-              <div key={exp.id} style={{ marginBottom: "6px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 600 }}>{exp.role}</span>
-                  <span style={{ color: "#6B7280" }}>{exp.startDate} – {exp.endDate}</span>
-                </div>
-                <div style={{ color: "#4B5563", marginBottom: "2px" }}>
-                  {exp.company} · {exp.location}
-                </div>
-                <ul style={{ margin: "2px 0 0 14px", padding: 0 }}>
-                  {bullets.map((b) => (
-                    <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
-                  ))}
-                </ul>
+              <div key={exp.id} style={{ marginBottom: "5px" }}>
+                <RowBetween
+                  left={
+                    <span style={{ fontWeight: 700 }}>
+                      {exp.role}
+                      {exp.company ? `, ${exp.company}` : ""}
+                    </span>
+                  }
+                  right={
+                    <span style={{ color: MUTED }}>
+                      {exp.startDate} - {exp.endDate}
+                    </span>
+                  }
+                />
+                {bullets.map((b) => (
+                  <Bullet key={b.id}>{b.text}</Bullet>
+                ))}
               </div>
             );
           })}
         </Section>
       )}
 
+      {/* Education — score and dates right-aligned (not stuck to the institute) */}
+      {education.length > 0 && (
+        <Section title="Education">
+          {education.map((edu) => (
+            <div key={edu.id} style={{ marginBottom: "3px" }}>
+              <RowBetween
+                left={
+                  <span>
+                    <span style={{ fontWeight: 700 }}>{edu.degree}</span>
+                    {edu.institute ? `  ${edu.institute}` : ""}
+                  </span>
+                }
+                right={
+                  <span style={{ color: MUTED }}>
+                    {edu.score ? `${edu.score}   ` : ""}
+                    {edu.startDate} - {edu.endDate}
+                  </span>
+                }
+              />
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {/* Technical Skills */}
+      {skillGroups.length > 0 && (
+        <Section title="Technical Skills">
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ width: "48%" }}>
+              {skillsLeft.map(([cat, names]) => (
+                <Bullet key={cat}>
+                  <span style={{ fontWeight: 700 }}>{cat}: </span>
+                  {names.join(", ")}
+                </Bullet>
+              ))}
+            </div>
+            <div style={{ width: "48%" }}>
+              {skillsRight.map(([cat, names]) => (
+                <Bullet key={cat}>
+                  <span style={{ fontWeight: 700 }}>{cat}: </span>
+                  {names.join(", ")}
+                </Bullet>
+              ))}
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* Projects */}
       {projects.length > 0 && (
-        <Section title="PROJECTS">
+        <Section title="Projects">
           {projects.map((proj) => {
             const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
               (b) => !hiddenBulletIds.has(b.id)
             );
             const twoCol = bulletsUseTwoCols(bullets);
-            const mid = Math.ceil(bullets.length / 2);
-            const left = bullets.slice(0, mid);
-            const right = bullets.slice(mid);
+            const [left, right] = chunkTwo(bullets);
             return (
-              <div key={proj.id} style={{ marginBottom: "6px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontWeight: 600 }}>
-                    {proj.title}
-                    {proj.tools.length > 0 && (
-                      <span style={{ fontWeight: 400, color: "#6B7280" }}> | {proj.tools.join(", ")}</span>
-                    )}
-                  </span>
-                  {proj.sourceLink && (
-                    <span style={{ color: "#2563EB", fontSize: "9px" }}>{proj.sourceLink}</span>
-                  )}
-                </div>
+              <div key={proj.id} style={{ marginBottom: "5px" }}>
+                <RowBetween
+                  left={
+                    <span style={{ fontWeight: 700 }}>
+                      {proj.title}
+                      {proj.tools.length > 0 && (
+                        <span style={{ fontWeight: 400, color: MUTED }}>
+                          {"  |  "}
+                          {proj.tools.join(", ")}
+                        </span>
+                      )}
+                    </span>
+                  }
+                  right={
+                    proj.sourceLink ? (
+                      <span style={{ color: LINK }}>Source</span>
+                    ) : null
+                  }
+                />
                 {twoCol ? (
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <ul style={{ width: "48%", margin: "2px 0 0 14px", padding: 0 }}>
+                    <div style={{ width: "48%" }}>
                       {left.map((b) => (
-                        <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
+                        <Bullet key={b.id}>{b.text}</Bullet>
                       ))}
-                    </ul>
-                    <ul style={{ width: "48%", margin: "2px 0 0 14px", padding: 0 }}>
+                    </div>
+                    <div style={{ width: "48%" }}>
                       {right.map((b) => (
-                        <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
+                        <Bullet key={b.id}>{b.text}</Bullet>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ) : (
-                  <ul style={{ margin: "2px 0 0 14px", padding: 0 }}>
-                    {bullets.map((b) => (
-                      <li key={b.id} style={{ marginBottom: "1px" }}>{b.text}</li>
-                    ))}
-                  </ul>
+                  bullets.map((b) => <Bullet key={b.id}>{b.text}</Bullet>)
                 )}
               </div>
             );
@@ -183,44 +276,39 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
         </Section>
       )}
 
-      {/* Education */}
-      {education.length > 0 && (
-        <Section title="EDUCATION">
-          {education.map((edu) => (
-            <div key={edu.id} style={{ marginBottom: "4px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontWeight: 600 }}>{edu.degree}</span>
-                <span style={{ color: "#6B7280" }}>{edu.startDate} – {edu.endDate}</span>
-              </div>
-              <div style={{ color: "#4B5563" }}>
-                {edu.institute} · {edu.location}
-                {edu.score && ` · ${edu.score}`}
-              </div>
-            </div>
-          ))}
-        </Section>
-      )}
-
       {/* Certifications */}
       {certifications.length > 0 && (
-        <Section title="CERTIFICATIONS">
+        <Section title="Certifications">
           {certifications.map((c) => (
-            <div key={c.id} style={{ marginBottom: "3px" }}>
-              <span style={{ fontWeight: 600 }}>{c.name}</span>
-              <span style={{ color: "#6B7280" }}> · {c.issuer} · {c.date}</span>
-            </div>
+            <RowBetween
+              key={c.id}
+              left={
+                <span>
+                  <span style={{ fontWeight: 700 }}>{c.name}</span>
+                  {c.issuer ? `  ${c.issuer}` : ""}
+                </span>
+              }
+              right={<span style={{ color: MUTED }}>{c.date}</span>}
+            />
           ))}
         </Section>
       )}
 
-      {/* Awards */}
+      {/* Achievements */}
       {awards.length > 0 && (
-        <Section title="AWARDS">
+        <Section title="Achievements">
           {awards.map((a) => (
             <div key={a.id} style={{ marginBottom: "3px" }}>
-              <span style={{ fontWeight: 600 }}>{a.title}</span>
-              <span style={{ color: "#6B7280" }}> · {a.organization} · {a.date}</span>
-              {a.description && <div style={{ color: "#374151" }}>{a.description}</div>}
+              <RowBetween
+                left={
+                  <span>
+                    <span style={{ fontWeight: 700 }}>{a.title}</span>
+                    {a.organization ? `  ${a.organization}` : ""}
+                  </span>
+                }
+                right={<span style={{ color: MUTED }}>{a.date}</span>}
+              />
+              {a.description && <div style={{ color: MUTED }}>{a.description}</div>}
             </div>
           ))}
         </Section>
@@ -228,30 +316,28 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
 
       {/* Languages */}
       {languages.length > 0 && (
-        <Section title="LANGUAGES">
-          <div style={{ display: "flex", gap: "12px" }}>
-            {languages.map((l) => (
-              <span key={l.id}>{l.name} ({l.proficiency})</span>
-            ))}
+        <Section title="Languages">
+          <div>
+            {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
           </div>
         </Section>
       )}
 
       {/* Strengths */}
       {strengths.length > 0 && (
-        <Section title="STRENGTHS">
-          <ul style={{ margin: "0 0 0 14px", padding: 0 }}>
-            {strengths.map((s) => (
-              <li key={s.id} style={{ marginBottom: "1px" }}>{s.name}</li>
-            ))}
-          </ul>
+        <Section title="Strengths">
+          {strengths.map((s) => (
+            <Bullet key={s.id}>{s.name}</Bullet>
+          ))}
         </Section>
       )}
 
       {/* Hobbies */}
       {hobbies.length > 0 && (
-        <Section title="HOBBIES">
-          <div>{hobbies.map((h) => h.name).join(" · ")}</div>
+        <Section title="Hobbies">
+          {hobbies.map((h) => (
+            <Bullet key={h.id}>{h.name}</Bullet>
+          ))}
         </Section>
       )}
     </div>
@@ -266,22 +352,43 @@ function bulletsUseTwoCols(bullets: { text: string }[]): boolean {
   return bullets.length >= 3 && bullets.every((b) => b.text.length <= SHORT_BULLET_MAX);
 }
 
+function chunkTwo<T>(items: T[]): [T[], T[]] {
+  const mid = Math.ceil(items.length / 2);
+  return [items.slice(0, mid), items.slice(mid)];
+}
+
+function RowBetween({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between" }}>
+      {left}
+      {right}
+    </div>
+  );
+}
+
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", marginBottom: "1px", paddingLeft: "5px" }}>
+      <span style={{ width: "11px", flexShrink: 0 }}>•</span>
+      <span style={{ flex: 1 }}>{children}</span>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: "8px" }}>
-      <h2
+    <section style={{ marginBottom: "9px" }}>
+      <div
         style={{
-          fontSize: "10px",
+          fontSize: "13px", // 10pt
           fontWeight: 700,
-          letterSpacing: "1px",
-          borderBottom: "1px solid #D1D5DB",
-          paddingBottom: "2px",
-          marginBottom: "4px",
+          letterSpacing: "0.8px",
           textTransform: "uppercase",
         }}
       >
         {title}
-      </h2>
+      </div>
+      <div style={{ borderBottom: `1px solid ${RULE}`, marginTop: "3px", marginBottom: "5px" }} />
       {children}
     </section>
   );

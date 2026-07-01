@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, useMemo, useEffect, useLayoutEffect } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
-import ResumePreview from "@/components/resume/ResumePreview";
+import ResumePreview, { A4_PX_HEIGHT } from "@/components/resume/ResumePreview";
 import type { ResumeDocumentProps } from "@/components/resume/ResumeDocument";
 import type { DocumentProps } from "@react-pdf/renderer";
 import { filterByDomain, filterBulletsByDomain } from "@/lib/filter";
@@ -22,9 +22,30 @@ export default function DownloadPage() {
   const [fitting, setFitting] = useState(true);
   const [overflowed, setOverflowed] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [contentHeight, setContentHeight] = useState(A4_PX_HEIGHT);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const singlePage = pageMode === "1";
+
+  // Track the preview's rendered height so 2-page mode can draw a page break
+  // at each A4 boundary instead of showing one long continuous sheet.
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const update = () => setContentHeight(el.scrollHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [singlePage, selectedDomain, customText, hiddenBulletIds]);
+
+  // In 2-page mode, one dashed break line per A4 boundary the content crosses.
+  const pageBreaks = singlePage
+    ? []
+    : Array.from(
+        { length: Math.max(0, Math.ceil(contentHeight / A4_PX_HEIGHT) - 1) },
+        (_, i) => (i + 1) * A4_PX_HEIGHT
+      );
 
   // Memoised so identities are stable across renders (prevents effect thrash).
   const filteredSkills = useMemo(() => filterByDomain(store.skills, selectedDomain), [store.skills, selectedDomain]);
@@ -104,7 +125,7 @@ export default function DownloadPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${store.profile.name.replace(/\s+/g, "_")}_${selectedDomain}_resume.pdf`;
+      a.download = `${store.profile.name.replace(/\s+/g, "_")}_${selectedDomain}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -223,7 +244,7 @@ export default function DownloadPage() {
 
         {/* Resume Preview */}
         <div className="flex-1 overflow-auto">
-          <div style={{ transform: "scale(0.85)", transformOrigin: "top left" }}>
+          <div style={{ transform: "scale(0.85)", transformOrigin: "top left", position: "relative" }}>
             <ResumePreview
               ref={previewRef}
               domainId={selectedDomain}
@@ -242,6 +263,34 @@ export default function DownloadPage() {
               singlePage={singlePage}
               hiddenBulletIds={new Set(singlePage ? hiddenBulletIds : [])}
             />
+            {/* Page-break guides for the 2-page layout */}
+            {pageBreaks.map((top, i) => (
+              <div
+                key={top}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: `${top}px`,
+                  borderTop: "2px dashed #ef4444",
+                  pointerEvents: "none",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "2px",
+                    fontSize: "11px",
+                    color: "#ef4444",
+                    background: "white",
+                    padding: "1px 6px",
+                  }}
+                >
+                  Page {i + 2}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

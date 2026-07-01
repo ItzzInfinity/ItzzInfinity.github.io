@@ -12,3 +12,6 @@ next-env.d.ts
 # Python
 __pycache__/
 *.pyc
+CLAUDE.md
+context.md
+FSD.md

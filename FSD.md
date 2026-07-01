@@ -263,6 +263,15 @@ The first working version should include:
   - If the page is not full, then the empty space should be filled with more bullets from the lower priority sections. - **Handled** (auto-fit only ever removes the minimum bullets needed to fit, and shows everything otherwise, so the page is always as full as available content allows; there is no separate hidden pool to pad from)
   - VLSI should have a sub radio button for RTL, Verification, FPGA. So that I can select the sub domain and generate the resume accordingly. - **Done**
   - In about section, I want to add full work experience too. - **Done**
-  ---
   - in About Education section duration/years should be displayed right side as same as work experience. - **Done**
   - When changing domains (Radio Buttons). Domain name under Name in resume is not changing - **Reopened** - This is working in localhost but not in the deployed version. Need to check why it is not working in the deployed version. - **Fixed** (root cause: a stale localStorage cache on the deployed origin shallow-overrode the new seed `domains` array, dropping `resumeTitle`. storage.ts now stamps a seed signature and auto-discards stale caches when seed.ts changes.)
+  ---
+  - Downloaded resume is not same as the preview. Need to fix it. Although Downloaded resume is what I need to get in the preview, NOT VISE-VERSA. - **Done** (the downloaded `ResumeDocument` is the source of truth; `ResumePreview` was rewritten to be a faithful HTML mirror of it — same section order/names, per-item layout, and a type scale that is the PDF's pt sizes scaled by the pt→px factor, so the preview reads like the download and measures like it.)
+  - The Pointers are not aligned same with the preview - 
+    - Name, Skill, Experience, Projects, Education, Languages, Strengths, Hobbies -- Preview
+    - Name, Summary, Education, Technical Skills, Projects, Languages, Strengths, Hobbies -- Downloaded Resume 
+    - **Done** (preview now follows the download's order/headings: Summary, Work Experience, Education, Technical Skills, Projects, Certifications, Achievements, Languages, Strengths, Hobbies.)
+  - Need to remove _resume from the downloaded resume name. - **Done** (filename is now `<Name>_<domain>.pdf`.)
+  - Need a split Preview for 2 page layout. It is currently showing one long page. - **Done** (2-page mode overlays a dashed page-break guide at each A4 boundary the content crosses, labelled Page 2/…, instead of one continuous sheet.)
+  - Selected 1 Page resume from VLSI and got 2 pages Need to set correct height for the 1 page resume. - Two descriptive lines of hobbies got overflowed the page. - Calculate One page height and set the height accordingly. - **Done** (root cause: the preview used a smaller type scale than the PDF, so it under-measured and auto-fit stopped trimming while the real PDF still overflowed. Preview now renders at the PDF's proportional sizes on a true A4 @96dpi sheet, so `isOverflowing` predicts the PDF.)
+  - The Education section in preview is good but not in the downloaded resume. As Grades are sticked with Institute name and address in the preview - **Done** (both renderers put degree + institute on the left and score + dates right-aligned; the score is no longer stuck to the institute/address.)
