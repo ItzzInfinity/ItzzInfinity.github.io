@@ -50,6 +50,11 @@ export interface ResumeDocumentProps {
   strengths?: Strength[];
   // Title shown under the name; overrides profile.title (per-domain titles).
   headerTitle?: string;
+  // Summary paragraph; overrides profile.about (per-domain summaries).
+  summaryText?: string;
+  // Bullet ids hidden by auto-fit. May also contain `section:<name>` tokens
+  // (see OPTIONAL_SECTION_TRIM_ORDER in lib/autofit.ts) which hide whole
+  // optional sections when trimming bullets alone cannot reach one page.
   hiddenBulletIds?: string[];
 }
 
@@ -99,6 +104,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rowBetween: { flexDirection: "row", justifyContent: "space-between" },
+  // In a yoga row a bare <Text> keeps its intrinsic width, so a long left
+  // text (e.g. degree + institute) runs into the right-aligned dates/score.
+  // The left side must flex+wrap; the right side keeps its width intact.
+  rowLeft: { flex: 1, paddingRight: 8 },
+  rowRight: { flexShrink: 0, textAlign: "right" },
   bold: { fontFamily: "Helvetica-Bold" },
   muted: { color: MUTED },
   bulletRow: { flexDirection: "row", marginBottom: 1, paddingLeft: 4 },
@@ -157,10 +167,14 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
     hobbies,
     strengths = [],
     headerTitle,
+    summaryText,
     hiddenBulletIds = [],
   } = props;
 
+  const summary = summaryText ?? profile.about;
+
   const hidden = new Set(hiddenBulletIds);
+  const sectionHidden = (name: string) => hidden.has(`section:${name}`);
 
   const visibleSkills = skills.filter((s) => s.visible);
   const skillGroups = Object.entries(
@@ -218,10 +232,10 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
         ) : null}
 
         {/* Summary */}
-        {profile.about ? (
+        {summary ? (
           <View style={styles.section}>
             <SectionHeading title="Summary" />
-            <Text style={styles.summaryText}>{profile.about}</Text>
+            <Text style={styles.summaryText}>{summary}</Text>
           </View>
         ) : null}
 
@@ -236,11 +250,11 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
               return (
                 <View key={exp.id} style={{ marginBottom: 4 }}>
                   <View style={styles.rowBetween}>
-                    <Text style={styles.bold}>
+                    <Text style={[styles.bold, styles.rowLeft]}>
                       {exp.role}
                       {exp.company ? `, ${exp.company}` : ""}
                     </Text>
-                    <Text style={styles.muted}>
+                    <Text style={[styles.muted, styles.rowRight]}>
                       {exp.startDate} - {exp.endDate}
                     </Text>
                   </View>
@@ -258,17 +272,20 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
           <View style={styles.section}>
             <SectionHeading title="Education" />
             {education.map((edu) => (
-              <View key={edu.id} style={{ marginBottom: 2 }}>
+              // Two-line layout: bold degree with right-aligned dates, then a
+              // muted "Institute · Location · Score" detail line.
+              <View key={edu.id} style={{ marginBottom: 3 }}>
                 <View style={styles.rowBetween}>
-                  <Text>
-                    <Text style={styles.bold}>{edu.degree}</Text>
-                    {edu.institute ? `  ${edu.institute}` : ""}
-                  </Text>
-                  <Text style={styles.muted}>
-                    {edu.score ? `${edu.score}   ` : ""}
-                    {edu.startDate} - {edu.endDate}
+                  <Text style={[styles.bold, styles.rowLeft]}>{edu.degree}</Text>
+                  <Text style={[styles.muted, styles.rowRight]}>
+                    {edu.startDate} – {edu.endDate}
                   </Text>
                 </View>
+                <Text style={styles.muted}>
+                  {[edu.institute, edu.location, edu.score]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
               </View>
             ))}
           </View>
@@ -312,7 +329,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
               return (
                 <View key={proj.id} style={{ marginBottom: 4 }}>
                   <View style={styles.rowBetween}>
-                    <Text style={styles.bold}>
+                    <Text style={[styles.bold, styles.rowLeft]}>
                       {proj.title}
                       {proj.tools.length > 0 ? (
                         <Text style={[styles.muted, { fontFamily: "Helvetica" }]}>
@@ -322,7 +339,10 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
                       ) : null}
                     </Text>
                     {proj.sourceLink ? (
-                      <Link style={styles.link} src={normalizeUrl(proj.sourceLink)}>
+                      <Link
+                        style={[styles.link, styles.rowRight]}
+                        src={normalizeUrl(proj.sourceLink)}
+                      >
                         Source
                       </Link>
                     ) : null}
@@ -350,33 +370,33 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
         ) : null}
 
         {/* Certifications */}
-        {certifications.length > 0 ? (
+        {certifications.length > 0 && !sectionHidden("certifications") ? (
           <View style={styles.section}>
             <SectionHeading title="Certifications" />
             {certifications.map((c) => (
               <View key={c.id} style={styles.rowBetween}>
-                <Text>
+                <Text style={styles.rowLeft}>
                   <Text style={styles.bold}>{c.name}</Text>
                   {c.issuer ? `  ${c.issuer}` : ""}
                 </Text>
-                <Text style={styles.muted}>{c.date}</Text>
+                <Text style={[styles.muted, styles.rowRight]}>{c.date}</Text>
               </View>
             ))}
           </View>
         ) : null}
 
         {/* Achievements (Awards) */}
-        {awards.length > 0 ? (
+        {awards.length > 0 && !sectionHidden("awards") ? (
           <View style={styles.section}>
             <SectionHeading title="Achievements" />
             {awards.map((a) => (
               <View key={a.id} style={{ marginBottom: 2 }}>
                 <View style={styles.rowBetween}>
-                  <Text>
+                  <Text style={styles.rowLeft}>
                     <Text style={styles.bold}>{a.title}</Text>
                     {a.organization ? `  ${a.organization}` : ""}
                   </Text>
-                  <Text style={styles.muted}>{a.date}</Text>
+                  <Text style={[styles.muted, styles.rowRight]}>{a.date}</Text>
                 </View>
                 {a.description ? (
                   <Text style={styles.muted}>{a.description}</Text>
@@ -387,7 +407,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
         ) : null}
 
         {/* Languages */}
-        {languages.length > 0 ? (
+        {languages.length > 0 && !sectionHidden("languages") ? (
           <View style={styles.section}>
             <SectionHeading title="Languages" />
             <Text>
@@ -397,7 +417,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
         ) : null}
 
         {/* Strengths */}
-        {strengths.length > 0 ? (
+        {strengths.length > 0 && !sectionHidden("strengths") ? (
           <View style={styles.section}>
             <SectionHeading title="Strengths" />
             {strengths.map((s) => (
@@ -407,7 +427,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
         ) : null}
 
         {/* Hobbies */}
-        {hobbies.length > 0 ? (
+        {hobbies.length > 0 && !sectionHidden("hobbies") ? (
           <View style={styles.section}>
             <SectionHeading title="Hobbies" />
             {hobbies.map((h) => (

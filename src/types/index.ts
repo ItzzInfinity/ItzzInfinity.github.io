@@ -20,6 +20,10 @@ export interface Domain {
   // Title shown under the name on the resume when this domain is selected.
   // Falls back to profile.title when unset.
   resumeTitle?: string;
+  // Domain-specific summary paragraph, shown in the resume Summary section
+  // and as the intro on the domain's portfolio page. Falls back to
+  // profile.about when unset.
+  summary?: string;
 }
 
 export interface Skill {

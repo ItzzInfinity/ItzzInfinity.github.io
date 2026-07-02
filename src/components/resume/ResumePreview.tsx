@@ -44,6 +44,8 @@ interface Props {
   strengths?: Strength[];
   // Title shown under the name; overrides profile.title (used for per-domain titles).
   headerTitle?: string;
+  // Summary paragraph; overrides profile.about (per-domain summaries).
+  summaryText?: string;
   // When false, the page is allowed to grow past one A4 (2-page mode).
   singlePage?: boolean;
   hiddenBulletIds?: Set<string>;
@@ -75,11 +77,17 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
     hobbies,
     strengths = [],
     headerTitle,
+    summaryText,
     singlePage = true,
     hiddenBulletIds = new Set(),
   },
   ref
 ) {
+  const summary = summaryText ?? profile.about;
+  // Auto-fit can hide whole optional sections via `section:<name>` tokens in
+  // hiddenBulletIds; mirror ResumeDocument exactly so measurement stays true.
+  const sectionHidden = (name: string) => hiddenBulletIds.has(`section:${name}`);
+
   const visibleSkills = skills.filter((s) => s.visible);
   const skillGroups = Object.entries(
     visibleSkills.reduce<Record<string, string[]>>((acc, sk) => {
@@ -140,9 +148,9 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
       {customText && <p style={{ marginBottom: "8px" }}>{customText}</p>}
 
       {/* Summary */}
-      {profile.about && (
+      {summary && (
         <Section title="Summary">
-          <div style={{ textAlign: "justify" }}>{profile.about}</div>
+          <div style={{ textAlign: "justify" }}>{summary}</div>
         </Section>
       )}
 
@@ -177,25 +185,23 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
         </Section>
       )}
 
-      {/* Education — score and dates right-aligned (not stuck to the institute) */}
+      {/* Education — two lines: bold degree + right-aligned dates, then a
+          muted "Institute · Location · Score" detail line (mirrors the PDF). */}
       {education.length > 0 && (
         <Section title="Education">
           {education.map((edu) => (
-            <div key={edu.id} style={{ marginBottom: "3px" }}>
+            <div key={edu.id} style={{ marginBottom: "4px" }}>
               <RowBetween
-                left={
-                  <span>
-                    <span style={{ fontWeight: 700 }}>{edu.degree}</span>
-                    {edu.institute ? `  ${edu.institute}` : ""}
-                  </span>
-                }
+                left={<span style={{ fontWeight: 700 }}>{edu.degree}</span>}
                 right={
                   <span style={{ color: MUTED }}>
-                    {edu.score ? `${edu.score}   ` : ""}
-                    {edu.startDate} - {edu.endDate}
+                    {edu.startDate} – {edu.endDate}
                   </span>
                 }
               />
+              <div style={{ color: MUTED }}>
+                {[edu.institute, edu.location, edu.score].filter(Boolean).join(" · ")}
+              </div>
             </div>
           ))}
         </Section>
@@ -277,7 +283,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
       )}
 
       {/* Certifications */}
-      {certifications.length > 0 && (
+      {certifications.length > 0 && !sectionHidden("certifications") && (
         <Section title="Certifications">
           {certifications.map((c) => (
             <RowBetween
@@ -295,7 +301,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
       )}
 
       {/* Achievements */}
-      {awards.length > 0 && (
+      {awards.length > 0 && !sectionHidden("awards") && (
         <Section title="Achievements">
           {awards.map((a) => (
             <div key={a.id} style={{ marginBottom: "3px" }}>
@@ -315,7 +321,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
       )}
 
       {/* Languages */}
-      {languages.length > 0 && (
+      {languages.length > 0 && !sectionHidden("languages") && (
         <Section title="Languages">
           <div>
             {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
@@ -324,7 +330,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
       )}
 
       {/* Strengths */}
-      {strengths.length > 0 && (
+      {strengths.length > 0 && !sectionHidden("strengths") && (
         <Section title="Strengths">
           {strengths.map((s) => (
             <Bullet key={s.id}>{s.name}</Bullet>
@@ -333,7 +339,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
       )}
 
       {/* Hobbies */}
-      {hobbies.length > 0 && (
+      {hobbies.length > 0 && !sectionHidden("hobbies") && (
         <Section title="Hobbies">
           {hobbies.map((h) => (
             <Bullet key={h.id}>{h.name}</Bullet>
@@ -357,11 +363,16 @@ function chunkTwo<T>(items: T[]): [T[], T[]] {
   return [items.slice(0, mid), items.slice(mid)];
 }
 
+// Mirrors the PDF's rowLeft/rowRight: the left side flexes and wraps, the
+// right side keeps its intrinsic width, so long left text never collides
+// with (or reflows differently from) the right-aligned dates/score.
 function RowBetween({ left, right }: { left: React.ReactNode; right: React.ReactNode }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
-      {left}
-      {right}
+      <span style={{ flex: 1, paddingRight: "10px" }}>{left}</span>
+      {right != null && (
+        <span style={{ flexShrink: 0, textAlign: "right" }}>{right}</span>
+      )}
     </div>
   );
 }

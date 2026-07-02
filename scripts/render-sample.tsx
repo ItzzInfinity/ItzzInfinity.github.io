@@ -18,6 +18,7 @@ async function main() {
   const props = {
     domainId,
     headerTitle: domain?.resumeTitle ?? seedData.profile.title,
+    summaryText: domain?.summary ?? seedData.profile.about,
     profile: seedData.profile,
     skills: filterByDomain(seedData.skills, domainId),
     experience: filterByDomain(seedData.experience, domainId),

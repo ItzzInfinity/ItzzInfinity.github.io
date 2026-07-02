@@ -4,8 +4,8 @@ import { useResumeStore } from "@/store/useResumeStore";
 import ResumePreview, { A4_PX_HEIGHT } from "@/components/resume/ResumePreview";
 import type { ResumeDocumentProps } from "@/components/resume/ResumeDocument";
 import type { DocumentProps } from "@react-pdf/renderer";
-import { filterByDomain, filterBulletsByDomain } from "@/lib/filter";
-import { isOverflowing } from "@/lib/autofit";
+import { filterByDomain } from "@/lib/filter";
+import { isOverflowing, removableItemIds, countPdfPages } from "@/lib/autofit";
 
 type PageMode = "1" | "2";
 
@@ -20,6 +20,7 @@ export default function DownloadPage() {
   const [pageMode, setPageMode] = useState<PageMode>("1");
   const [hiddenBulletIds, setHiddenBulletIds] = useState<string[]>([]);
   const [fitting, setFitting] = useState(true);
+  const [verifying, setVerifying] = useState(false);
   const [overflowed, setOverflowed] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [contentHeight, setContentHeight] = useState(A4_PX_HEIGHT);
@@ -60,17 +61,55 @@ export default function DownloadPage() {
     return d?.resumeTitle ?? store.profile.title;
   }, [store.domains, selectedDomain, store.profile.title]);
 
-  // Ordered list of bullet ids eligible for trimming: lowest priority first.
-  const removableOrder = useMemo(() => {
-    const all: { id: string; priority: number }[] = [];
-    for (const proj of filteredProjects) {
-      for (const b of filterBulletsByDomain(proj.bullets, selectedDomain)) all.push({ id: b.id, priority: b.priority });
-    }
-    for (const exp of filteredExperience) {
-      for (const b of filterBulletsByDomain(exp.bullets, selectedDomain)) all.push({ id: b.id, priority: b.priority });
-    }
-    return all.sort((a, b) => b.priority - a.priority).map((x) => x.id);
-  }, [filteredProjects, filteredExperience, selectedDomain]);
+  // Per-domain summary paragraph; falls back to the profile about text.
+  const summaryText = useMemo(() => {
+    const d = store.domains.find((x) => x.id === selectedDomain);
+    return d?.summary ?? store.profile.about;
+  }, [store.domains, selectedDomain, store.profile.about]);
+
+  // Ordered trim sequence: bullets lowest-priority-first, then optional
+  // sections (as `section:<name>` tokens) least-important-first.
+  const removableOrder = useMemo(
+    () => removableItemIds(filteredProjects, filteredExperience, selectedDomain),
+    [filteredProjects, filteredExperience, selectedDomain]
+  );
+
+  // Everything the PDF needs except hiddenBulletIds; shared by the verify
+  // pass and the download handler so both render the exact same document.
+  const baseDocProps = useMemo<Omit<ResumeDocumentProps, "hiddenBulletIds">>(
+    () => ({
+      domainId: selectedDomain,
+      customText,
+      profile: store.profile,
+      skills: filteredSkills,
+      experience: filteredExperience,
+      education: store.education,
+      projects: filteredProjects,
+      certifications: filteredCerts,
+      awards: filteredAwards,
+      languages: store.languages,
+      hobbies: store.hobbies,
+      strengths: store.strengths,
+      headerTitle,
+      summaryText,
+    }),
+    [
+      selectedDomain,
+      customText,
+      store.profile,
+      filteredSkills,
+      filteredExperience,
+      store.education,
+      filteredProjects,
+      filteredCerts,
+      filteredAwards,
+      store.languages,
+      store.hobbies,
+      store.strengths,
+      headerTitle,
+      summaryText,
+    ]
+  );
 
   // Restart the fit pass whenever the resume content or page mode changes.
   // Auto-fit only runs in single-page mode; 2-page mode lets content flow.
@@ -96,6 +135,63 @@ export default function DownloadPage() {
     }
   }, [fitting, hiddenBulletIds.length, removableOrder]);
 
+  // Ref mirror so the verify pass can read the HTML pass's result without
+  // depending on hiddenBulletIds (which it also writes).
+  const hiddenRef = useRef<string[]>(hiddenBulletIds);
+  hiddenRef.current = hiddenBulletIds;
+
+  // Self-check pass (single-page only). The HTML preview only approximates
+  // react-pdf's Helvetica metrics, so after the fast on-screen fit converges,
+  // render the REAL PDF, count its pages, and keep trimming until the PDF
+  // itself is one page. Bounded: each iteration hides one more bullet and the
+  // loop stops when removableOrder is exhausted; the whole loop runs inside
+  // one effect invocation and hiddenBulletIds is written once at the end, so
+  // this cannot re-trigger itself.
+  useEffect(() => {
+    if (!singlePage || fitting) return;
+    let cancelled = false;
+    (async () => {
+      setVerifying(true);
+      try {
+        const [{ pdf }, mod] = await Promise.all([
+          import("@react-pdf/renderer"),
+          import("@/components/resume/ResumeDocument"),
+        ]);
+        let hidden = hiddenRef.current;
+        let fits = false;
+        for (;;) {
+          if (cancelled) return;
+          const element = React.createElement(mod.default, {
+            ...baseDocProps,
+            hiddenBulletIds: hidden,
+          }) as React.ReactElement<DocumentProps>;
+          const blob = await pdf(element).toBlob();
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          if (countPdfPages(bytes) <= 1) {
+            fits = true;
+            break;
+          }
+          if (hidden.length >= removableOrder.length) break;
+          hidden = removableOrder.slice(0, hidden.length + 1);
+        }
+        if (!cancelled) {
+          setHiddenBulletIds(hidden);
+          setOverflowed(!fits);
+        }
+      } finally {
+        if (!cancelled) setVerifying(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fitting, singlePage, removableOrder, baseDocProps]);
+
+  const trimmedBullets = hiddenBulletIds.filter((id) => !id.startsWith("section:")).length;
+  const trimmedSections = hiddenBulletIds
+    .filter((id) => id.startsWith("section:"))
+    .map((id) => id.slice("section:".length));
+
   async function handleDownload() {
     setDownloading(true);
     try {
@@ -104,19 +200,7 @@ export default function DownloadPage() {
         import("@/components/resume/ResumeDocument"),
       ]);
       const props: ResumeDocumentProps = {
-        domainId: selectedDomain,
-        customText,
-        profile: store.profile,
-        skills: filteredSkills,
-        experience: filteredExperience,
-        education: store.education,
-        projects: filteredProjects,
-        certifications: filteredCerts,
-        awards: filteredAwards,
-        languages: store.languages,
-        hobbies: store.hobbies,
-        strengths: store.strengths,
-        headerTitle,
+        ...baseDocProps,
         // In 2-page mode nothing is trimmed; react-pdf paginates automatically.
         hiddenBulletIds: singlePage ? hiddenBulletIds : [],
       };
@@ -215,15 +299,29 @@ export default function DownloadPage() {
 
           <button
             onClick={handleDownload}
-            disabled={downloading}
+            disabled={downloading || (singlePage && (fitting || verifying))}
             className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-900 font-semibold py-3 rounded-lg transition-colors"
           >
-            {downloading ? "Generating PDF..." : "Download PDF"}
+            {downloading
+              ? "Generating PDF..."
+              : singlePage && (fitting || verifying)
+              ? "Fitting to one page..."
+              : "Download PDF"}
           </button>
 
-          {singlePage && hiddenBulletIds.length > 0 && (
+          {singlePage && verifying && (
+            <p className="text-xs text-slate-400">
+              Verifying one-page fit against the actual PDF...
+            </p>
+          )}
+
+          {singlePage && trimmedBullets > 0 && (
             <p className="text-xs text-amber-400">
-              {hiddenBulletIds.length} low-priority bullet{hiddenBulletIds.length > 1 ? "s" : ""} trimmed to fit one page.
+              {trimmedBullets} low-priority bullet{trimmedBullets > 1 ? "s" : ""}
+              {trimmedSections.length > 0
+                ? ` and the ${trimmedSections.join(", ")} section${trimmedSections.length > 1 ? "s" : ""}`
+                : ""}{" "}
+              trimmed to fit one page.
             </p>
           )}
 
@@ -260,6 +358,7 @@ export default function DownloadPage() {
               hobbies={store.hobbies}
               strengths={store.strengths}
               headerTitle={headerTitle}
+              summaryText={summaryText}
               singlePage={singlePage}
               hiddenBulletIds={new Set(singlePage ? hiddenBulletIds : [])}
             />
