@@ -34,6 +34,7 @@ import {
   Strength,
 } from "@/types";
 import { filterBulletsByDomain } from "@/lib/filter";
+import { DEFAULT_SECTION_ORDER, SectionKey } from "@/lib/sections";
 
 export interface ResumeDocumentProps {
   domainId: string;
@@ -55,7 +56,11 @@ export interface ResumeDocumentProps {
   // Bullet ids hidden by auto-fit. May also contain `section:<name>` tokens
   // (see OPTIONAL_SECTION_TRIM_ORDER in lib/autofit.ts) which hide whole
   // optional sections when trimming bullets alone cannot reach one page.
+  // The Download page's manual override may emit them for ANY section.
   hiddenBulletIds?: string[];
+  // Section render order; defaults to the template.pdf order. Must stay in
+  // sync with ResumePreview (both consume lib/sections.ts).
+  sectionOrder?: SectionKey[];
 }
 
 const INK = "#1a1a1a";
@@ -169,6 +174,7 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
     headerTitle,
     summaryText,
     hiddenBulletIds = [],
+    sectionOrder = [...DEFAULT_SECTION_ORDER],
   } = props;
 
   const summary = summaryText ?? profile.about;
@@ -184,6 +190,216 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
     }, {})
   );
   const [skillsLeft, skillsRight] = chunkTwo(skillGroups);
+
+  // One renderer per section, keyed so the order can come from props (the
+  // Download page's Advanced panel). Each returns null when it has no
+  // content, mirroring the previous hard-coded conditional blocks.
+  const sections: Record<SectionKey, () => React.ReactNode> = {
+    summary: () =>
+      summary ? (
+        <View style={styles.section}>
+          <SectionHeading title="Summary" />
+          <Text style={styles.summaryText}>{summary}</Text>
+        </View>
+      ) : null,
+
+    experience: () =>
+      experience.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Work Experience" />
+          {experience.map((exp) => {
+            const bullets = filterBulletsByDomain(exp.bullets, domainId).filter(
+              (b) => !hidden.has(b.id)
+            );
+            return (
+              <View key={exp.id} style={{ marginBottom: 4 }}>
+                <View style={styles.rowBetween}>
+                  <Text style={[styles.bold, styles.rowLeft]}>
+                    {exp.role}
+                    {exp.company ? `, ${exp.company}` : ""}
+                  </Text>
+                  <Text style={[styles.muted, styles.rowRight]}>
+                    {exp.startDate} - {exp.endDate}
+                  </Text>
+                </View>
+                {bullets.map((b) => (
+                  <Bullet key={b.id}>{b.text}</Bullet>
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      ) : null,
+
+    education: () =>
+      education.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Education" />
+          {education.map((edu) => (
+            // Two-line layout: bold degree with right-aligned dates, then a
+            // muted "Institute · Location · Score" detail line.
+            <View key={edu.id} style={{ marginBottom: 3 }}>
+              <View style={styles.rowBetween}>
+                <Text style={[styles.bold, styles.rowLeft]}>{edu.degree}</Text>
+                <Text style={[styles.muted, styles.rowRight]}>
+                  {edu.startDate} – {edu.endDate}
+                </Text>
+              </View>
+              <Text style={styles.muted}>
+                {[edu.institute, edu.location, edu.score]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null,
+
+    skills: () =>
+      skillGroups.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Technical Skills" />
+          <View style={styles.twoCol}>
+            <View style={styles.col}>
+              {skillsLeft.map(([cat, names]) => (
+                <Bullet key={cat}>
+                  <Text style={styles.bold}>{cat}: </Text>
+                  {names.join(", ")}
+                </Bullet>
+              ))}
+            </View>
+            <View style={styles.col}>
+              {skillsRight.map(([cat, names]) => (
+                <Bullet key={cat}>
+                  <Text style={styles.bold}>{cat}: </Text>
+                  {names.join(", ")}
+                </Bullet>
+              ))}
+            </View>
+          </View>
+        </View>
+      ) : null,
+
+    projects: () =>
+      projects.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Projects" />
+          {projects.map((proj) => {
+            const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
+              (b) => !hidden.has(b.id)
+            );
+            const twoCol = bulletsUseTwoCols(bullets);
+            const [left, right] = chunkTwo(bullets);
+            return (
+              <View key={proj.id} style={{ marginBottom: 4 }}>
+                <View style={styles.rowBetween}>
+                  <Text style={[styles.bold, styles.rowLeft]}>
+                    {proj.title}
+                    {proj.tools.length > 0 ? (
+                      <Text style={[styles.muted, { fontFamily: "Helvetica" }]}>
+                        {"  |  "}
+                        {proj.tools.join(", ")}
+                      </Text>
+                    ) : null}
+                  </Text>
+                  {proj.sourceLink ? (
+                    <Link
+                      style={[styles.link, styles.rowRight]}
+                      src={normalizeUrl(proj.sourceLink)}
+                    >
+                      Source
+                    </Link>
+                  ) : null}
+                </View>
+                {twoCol ? (
+                  <View style={styles.twoCol}>
+                    <View style={styles.col}>
+                      {left.map((b) => (
+                        <Bullet key={b.id}>{b.text}</Bullet>
+                      ))}
+                    </View>
+                    <View style={styles.col}>
+                      {right.map((b) => (
+                        <Bullet key={b.id}>{b.text}</Bullet>
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  bullets.map((b) => <Bullet key={b.id}>{b.text}</Bullet>)
+                )}
+              </View>
+            );
+          })}
+        </View>
+      ) : null,
+
+    certifications: () =>
+      certifications.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Certifications" />
+          {certifications.map((c) => (
+            <View key={c.id} style={styles.rowBetween}>
+              <Text style={styles.rowLeft}>
+                <Text style={styles.bold}>{c.name}</Text>
+                {c.issuer ? `  ${c.issuer}` : ""}
+              </Text>
+              <Text style={[styles.muted, styles.rowRight]}>{c.date}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null,
+
+    awards: () =>
+      awards.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Achievements" />
+          {awards.map((a) => (
+            <View key={a.id} style={{ marginBottom: 2 }}>
+              <View style={styles.rowBetween}>
+                <Text style={styles.rowLeft}>
+                  <Text style={styles.bold}>{a.title}</Text>
+                  {a.organization ? `  ${a.organization}` : ""}
+                </Text>
+                <Text style={[styles.muted, styles.rowRight]}>{a.date}</Text>
+              </View>
+              {a.description ? (
+                <Text style={styles.muted}>{a.description}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null,
+
+    languages: () =>
+      languages.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Languages" />
+          <Text>
+            {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
+          </Text>
+        </View>
+      ) : null,
+
+    strengths: () =>
+      strengths.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Strengths" />
+          {strengths.map((s) => (
+            <Bullet key={s.id}>{s.name}</Bullet>
+          ))}
+        </View>
+      ) : null,
+
+    hobbies: () =>
+      hobbies.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeading title="Hobbies" />
+          {hobbies.map((h) => (
+            <Bullet key={h.id}>{h.name}</Bullet>
+          ))}
+        </View>
+      ) : null,
+  };
 
   return (
     <Document title={`${profile.name} Resume`}>
@@ -231,210 +447,13 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
           <Text style={{ marginBottom: 6 }}>{customText}</Text>
         ) : null}
 
-        {/* Summary */}
-        {summary ? (
-          <View style={styles.section}>
-            <SectionHeading title="Summary" />
-            <Text style={styles.summaryText}>{summary}</Text>
-          </View>
-        ) : null}
-
-        {/* Experience */}
-        {experience.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeading title="Work Experience" />
-            {experience.map((exp) => {
-              const bullets = filterBulletsByDomain(exp.bullets, domainId).filter(
-                (b) => !hidden.has(b.id)
-              );
-              return (
-                <View key={exp.id} style={{ marginBottom: 4 }}>
-                  <View style={styles.rowBetween}>
-                    <Text style={[styles.bold, styles.rowLeft]}>
-                      {exp.role}
-                      {exp.company ? `, ${exp.company}` : ""}
-                    </Text>
-                    <Text style={[styles.muted, styles.rowRight]}>
-                      {exp.startDate} - {exp.endDate}
-                    </Text>
-                  </View>
-                  {bullets.map((b) => (
-                    <Bullet key={b.id}>{b.text}</Bullet>
-                  ))}
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {/* Education */}
-        {education.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeading title="Education" />
-            {education.map((edu) => (
-              // Two-line layout: bold degree with right-aligned dates, then a
-              // muted "Institute · Location · Score" detail line.
-              <View key={edu.id} style={{ marginBottom: 3 }}>
-                <View style={styles.rowBetween}>
-                  <Text style={[styles.bold, styles.rowLeft]}>{edu.degree}</Text>
-                  <Text style={[styles.muted, styles.rowRight]}>
-                    {edu.startDate} – {edu.endDate}
-                  </Text>
-                </View>
-                <Text style={styles.muted}>
-                  {[edu.institute, edu.location, edu.score]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Technical Skills */}
-        {skillGroups.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeading title="Technical Skills" />
-            <View style={styles.twoCol}>
-              <View style={styles.col}>
-                {skillsLeft.map(([cat, names]) => (
-                  <Bullet key={cat}>
-                    <Text style={styles.bold}>{cat}: </Text>
-                    {names.join(", ")}
-                  </Bullet>
-                ))}
-              </View>
-              <View style={styles.col}>
-                {skillsRight.map(([cat, names]) => (
-                  <Bullet key={cat}>
-                    <Text style={styles.bold}>{cat}: </Text>
-                    {names.join(", ")}
-                  </Bullet>
-                ))}
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {/* Projects */}
-        {projects.length > 0 ? (
-          <View style={styles.section}>
-            <SectionHeading title="Projects" />
-            {projects.map((proj) => {
-              const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
-                (b) => !hidden.has(b.id)
-              );
-              const twoCol = bulletsUseTwoCols(bullets);
-              const [left, right] = chunkTwo(bullets);
-              return (
-                <View key={proj.id} style={{ marginBottom: 4 }}>
-                  <View style={styles.rowBetween}>
-                    <Text style={[styles.bold, styles.rowLeft]}>
-                      {proj.title}
-                      {proj.tools.length > 0 ? (
-                        <Text style={[styles.muted, { fontFamily: "Helvetica" }]}>
-                          {"  |  "}
-                          {proj.tools.join(", ")}
-                        </Text>
-                      ) : null}
-                    </Text>
-                    {proj.sourceLink ? (
-                      <Link
-                        style={[styles.link, styles.rowRight]}
-                        src={normalizeUrl(proj.sourceLink)}
-                      >
-                        Source
-                      </Link>
-                    ) : null}
-                  </View>
-                  {twoCol ? (
-                    <View style={styles.twoCol}>
-                      <View style={styles.col}>
-                        {left.map((b) => (
-                          <Bullet key={b.id}>{b.text}</Bullet>
-                        ))}
-                      </View>
-                      <View style={styles.col}>
-                        {right.map((b) => (
-                          <Bullet key={b.id}>{b.text}</Bullet>
-                        ))}
-                      </View>
-                    </View>
-                  ) : (
-                    bullets.map((b) => <Bullet key={b.id}>{b.text}</Bullet>)
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-
-        {/* Certifications */}
-        {certifications.length > 0 && !sectionHidden("certifications") ? (
-          <View style={styles.section}>
-            <SectionHeading title="Certifications" />
-            {certifications.map((c) => (
-              <View key={c.id} style={styles.rowBetween}>
-                <Text style={styles.rowLeft}>
-                  <Text style={styles.bold}>{c.name}</Text>
-                  {c.issuer ? `  ${c.issuer}` : ""}
-                </Text>
-                <Text style={[styles.muted, styles.rowRight]}>{c.date}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Achievements (Awards) */}
-        {awards.length > 0 && !sectionHidden("awards") ? (
-          <View style={styles.section}>
-            <SectionHeading title="Achievements" />
-            {awards.map((a) => (
-              <View key={a.id} style={{ marginBottom: 2 }}>
-                <View style={styles.rowBetween}>
-                  <Text style={styles.rowLeft}>
-                    <Text style={styles.bold}>{a.title}</Text>
-                    {a.organization ? `  ${a.organization}` : ""}
-                  </Text>
-                  <Text style={[styles.muted, styles.rowRight]}>{a.date}</Text>
-                </View>
-                {a.description ? (
-                  <Text style={styles.muted}>{a.description}</Text>
-                ) : null}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Languages */}
-        {languages.length > 0 && !sectionHidden("languages") ? (
-          <View style={styles.section}>
-            <SectionHeading title="Languages" />
-            <Text>
-              {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Strengths */}
-        {strengths.length > 0 && !sectionHidden("strengths") ? (
-          <View style={styles.section}>
-            <SectionHeading title="Strengths" />
-            {strengths.map((s) => (
-              <Bullet key={s.id}>{s.name}</Bullet>
-            ))}
-          </View>
-        ) : null}
-
-        {/* Hobbies */}
-        {hobbies.length > 0 && !sectionHidden("hobbies") ? (
-          <View style={styles.section}>
-            <SectionHeading title="Hobbies" />
-            {hobbies.map((h) => (
-              <Bullet key={h.id}>{h.name}</Bullet>
-            ))}
-          </View>
-        ) : null}
+        {/* Sections in user-configurable order; a hidden `section:<key>`
+            token (auto-fit or manual override) skips the whole section. */}
+        {sectionOrder
+          .filter((key) => !sectionHidden(key))
+          .map((key) => (
+            <React.Fragment key={key}>{sections[key]()}</React.Fragment>
+          ))}
       </Page>
     </Document>
   );

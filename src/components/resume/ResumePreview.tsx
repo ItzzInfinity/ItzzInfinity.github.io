@@ -13,6 +13,7 @@ import {
   Strength,
 } from "@/types";
 import { filterBulletsByDomain } from "@/lib/filter";
+import { DEFAULT_SECTION_ORDER, SectionKey } from "@/lib/sections";
 
 /**
  * On-screen HTML mirror of ResumeDocument (the downloaded PDF).
@@ -49,6 +50,9 @@ interface Props {
   // When false, the page is allowed to grow past one A4 (2-page mode).
   singlePage?: boolean;
   hiddenBulletIds?: Set<string>;
+  // Section render order; defaults to the template.pdf order. Must stay in
+  // sync with ResumeDocument (both consume lib/sections.ts).
+  sectionOrder?: SectionKey[];
 }
 
 // PDF palette, mirrored so the preview reads like the download.
@@ -80,6 +84,7 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
     summaryText,
     singlePage = true,
     hiddenBulletIds = new Set(),
+    sectionOrder = [...DEFAULT_SECTION_ORDER],
   },
   ref
 ) {
@@ -96,6 +101,211 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
     }, {})
   );
   const [skillsLeft, skillsRight] = chunkTwo(skillGroups);
+
+  // One renderer per section, keyed so the order can come from props —
+  // mirrors the identical map in ResumeDocument so measurement stays true.
+  const sections: Record<SectionKey, () => React.ReactNode> = {
+    summary: () =>
+      summary ? (
+        <Section title="Summary">
+          <div style={{ textAlign: "justify" }}>{summary}</div>
+        </Section>
+      ) : null,
+
+    experience: () =>
+      experience.length > 0 ? (
+        <Section title="Work Experience">
+          {experience.map((exp) => {
+            const bullets = filterBulletsByDomain(exp.bullets, domainId).filter(
+              (b) => !hiddenBulletIds.has(b.id)
+            );
+            return (
+              <div key={exp.id} style={{ marginBottom: "5px" }}>
+                <RowBetween
+                  left={
+                    <span style={{ fontWeight: 700 }}>
+                      {exp.role}
+                      {exp.company ? `, ${exp.company}` : ""}
+                    </span>
+                  }
+                  right={
+                    <span style={{ color: MUTED }}>
+                      {exp.startDate} - {exp.endDate}
+                    </span>
+                  }
+                />
+                {bullets.map((b) => (
+                  <Bullet key={b.id}>{b.text}</Bullet>
+                ))}
+              </div>
+            );
+          })}
+        </Section>
+      ) : null,
+
+    // Education — two lines: bold degree + right-aligned dates, then a
+    // muted "Institute · Location · Score" detail line (mirrors the PDF).
+    education: () =>
+      education.length > 0 ? (
+        <Section title="Education">
+          {education.map((edu) => (
+            <div key={edu.id} style={{ marginBottom: "4px" }}>
+              <RowBetween
+                left={<span style={{ fontWeight: 700 }}>{edu.degree}</span>}
+                right={
+                  <span style={{ color: MUTED }}>
+                    {edu.startDate} – {edu.endDate}
+                  </span>
+                }
+              />
+              <div style={{ color: MUTED }}>
+                {[edu.institute, edu.location, edu.score].filter(Boolean).join(" · ")}
+              </div>
+            </div>
+          ))}
+        </Section>
+      ) : null,
+
+    skills: () =>
+      skillGroups.length > 0 ? (
+        <Section title="Technical Skills">
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div style={{ width: "48%" }}>
+              {skillsLeft.map(([cat, names]) => (
+                <Bullet key={cat}>
+                  <span style={{ fontWeight: 700 }}>{cat}: </span>
+                  {names.join(", ")}
+                </Bullet>
+              ))}
+            </div>
+            <div style={{ width: "48%" }}>
+              {skillsRight.map(([cat, names]) => (
+                <Bullet key={cat}>
+                  <span style={{ fontWeight: 700 }}>{cat}: </span>
+                  {names.join(", ")}
+                </Bullet>
+              ))}
+            </div>
+          </div>
+        </Section>
+      ) : null,
+
+    projects: () =>
+      projects.length > 0 ? (
+        <Section title="Projects">
+          {projects.map((proj) => {
+            const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
+              (b) => !hiddenBulletIds.has(b.id)
+            );
+            const twoCol = bulletsUseTwoCols(bullets);
+            const [left, right] = chunkTwo(bullets);
+            return (
+              <div key={proj.id} style={{ marginBottom: "5px" }}>
+                <RowBetween
+                  left={
+                    <span style={{ fontWeight: 700 }}>
+                      {proj.title}
+                      {proj.tools.length > 0 && (
+                        <span style={{ fontWeight: 400, color: MUTED }}>
+                          {"  |  "}
+                          {proj.tools.join(", ")}
+                        </span>
+                      )}
+                    </span>
+                  }
+                  right={
+                    proj.sourceLink ? (
+                      <span style={{ color: LINK }}>Source</span>
+                    ) : null
+                  }
+                />
+                {twoCol ? (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div style={{ width: "48%" }}>
+                      {left.map((b) => (
+                        <Bullet key={b.id}>{b.text}</Bullet>
+                      ))}
+                    </div>
+                    <div style={{ width: "48%" }}>
+                      {right.map((b) => (
+                        <Bullet key={b.id}>{b.text}</Bullet>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  bullets.map((b) => <Bullet key={b.id}>{b.text}</Bullet>)
+                )}
+              </div>
+            );
+          })}
+        </Section>
+      ) : null,
+
+    certifications: () =>
+      certifications.length > 0 ? (
+        <Section title="Certifications">
+          {certifications.map((c) => (
+            <RowBetween
+              key={c.id}
+              left={
+                <span>
+                  <span style={{ fontWeight: 700 }}>{c.name}</span>
+                  {c.issuer ? `  ${c.issuer}` : ""}
+                </span>
+              }
+              right={<span style={{ color: MUTED }}>{c.date}</span>}
+            />
+          ))}
+        </Section>
+      ) : null,
+
+    awards: () =>
+      awards.length > 0 ? (
+        <Section title="Achievements">
+          {awards.map((a) => (
+            <div key={a.id} style={{ marginBottom: "3px" }}>
+              <RowBetween
+                left={
+                  <span>
+                    <span style={{ fontWeight: 700 }}>{a.title}</span>
+                    {a.organization ? `  ${a.organization}` : ""}
+                  </span>
+                }
+                right={<span style={{ color: MUTED }}>{a.date}</span>}
+              />
+              {a.description && <div style={{ color: MUTED }}>{a.description}</div>}
+            </div>
+          ))}
+        </Section>
+      ) : null,
+
+    languages: () =>
+      languages.length > 0 ? (
+        <Section title="Languages">
+          <div>
+            {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
+          </div>
+        </Section>
+      ) : null,
+
+    strengths: () =>
+      strengths.length > 0 ? (
+        <Section title="Strengths">
+          {strengths.map((s) => (
+            <Bullet key={s.id}>{s.name}</Bullet>
+          ))}
+        </Section>
+      ) : null,
+
+    hobbies: () =>
+      hobbies.length > 0 ? (
+        <Section title="Hobbies">
+          {hobbies.map((h) => (
+            <Bullet key={h.id}>{h.name}</Bullet>
+          ))}
+        </Section>
+      ) : null,
+  };
 
   return (
     <div
@@ -147,205 +357,13 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
 
       {customText && <p style={{ marginBottom: "8px" }}>{customText}</p>}
 
-      {/* Summary */}
-      {summary && (
-        <Section title="Summary">
-          <div style={{ textAlign: "justify" }}>{summary}</div>
-        </Section>
-      )}
-
-      {/* Work Experience */}
-      {experience.length > 0 && (
-        <Section title="Work Experience">
-          {experience.map((exp) => {
-            const bullets = filterBulletsByDomain(exp.bullets, domainId).filter(
-              (b) => !hiddenBulletIds.has(b.id)
-            );
-            return (
-              <div key={exp.id} style={{ marginBottom: "5px" }}>
-                <RowBetween
-                  left={
-                    <span style={{ fontWeight: 700 }}>
-                      {exp.role}
-                      {exp.company ? `, ${exp.company}` : ""}
-                    </span>
-                  }
-                  right={
-                    <span style={{ color: MUTED }}>
-                      {exp.startDate} - {exp.endDate}
-                    </span>
-                  }
-                />
-                {bullets.map((b) => (
-                  <Bullet key={b.id}>{b.text}</Bullet>
-                ))}
-              </div>
-            );
-          })}
-        </Section>
-      )}
-
-      {/* Education — two lines: bold degree + right-aligned dates, then a
-          muted "Institute · Location · Score" detail line (mirrors the PDF). */}
-      {education.length > 0 && (
-        <Section title="Education">
-          {education.map((edu) => (
-            <div key={edu.id} style={{ marginBottom: "4px" }}>
-              <RowBetween
-                left={<span style={{ fontWeight: 700 }}>{edu.degree}</span>}
-                right={
-                  <span style={{ color: MUTED }}>
-                    {edu.startDate} – {edu.endDate}
-                  </span>
-                }
-              />
-              <div style={{ color: MUTED }}>
-                {[edu.institute, edu.location, edu.score].filter(Boolean).join(" · ")}
-              </div>
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {/* Technical Skills */}
-      {skillGroups.length > 0 && (
-        <Section title="Technical Skills">
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div style={{ width: "48%" }}>
-              {skillsLeft.map(([cat, names]) => (
-                <Bullet key={cat}>
-                  <span style={{ fontWeight: 700 }}>{cat}: </span>
-                  {names.join(", ")}
-                </Bullet>
-              ))}
-            </div>
-            <div style={{ width: "48%" }}>
-              {skillsRight.map(([cat, names]) => (
-                <Bullet key={cat}>
-                  <span style={{ fontWeight: 700 }}>{cat}: </span>
-                  {names.join(", ")}
-                </Bullet>
-              ))}
-            </div>
-          </div>
-        </Section>
-      )}
-
-      {/* Projects */}
-      {projects.length > 0 && (
-        <Section title="Projects">
-          {projects.map((proj) => {
-            const bullets = filterBulletsByDomain(proj.bullets, domainId).filter(
-              (b) => !hiddenBulletIds.has(b.id)
-            );
-            const twoCol = bulletsUseTwoCols(bullets);
-            const [left, right] = chunkTwo(bullets);
-            return (
-              <div key={proj.id} style={{ marginBottom: "5px" }}>
-                <RowBetween
-                  left={
-                    <span style={{ fontWeight: 700 }}>
-                      {proj.title}
-                      {proj.tools.length > 0 && (
-                        <span style={{ fontWeight: 400, color: MUTED }}>
-                          {"  |  "}
-                          {proj.tools.join(", ")}
-                        </span>
-                      )}
-                    </span>
-                  }
-                  right={
-                    proj.sourceLink ? (
-                      <span style={{ color: LINK }}>Source</span>
-                    ) : null
-                  }
-                />
-                {twoCol ? (
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <div style={{ width: "48%" }}>
-                      {left.map((b) => (
-                        <Bullet key={b.id}>{b.text}</Bullet>
-                      ))}
-                    </div>
-                    <div style={{ width: "48%" }}>
-                      {right.map((b) => (
-                        <Bullet key={b.id}>{b.text}</Bullet>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  bullets.map((b) => <Bullet key={b.id}>{b.text}</Bullet>)
-                )}
-              </div>
-            );
-          })}
-        </Section>
-      )}
-
-      {/* Certifications */}
-      {certifications.length > 0 && !sectionHidden("certifications") && (
-        <Section title="Certifications">
-          {certifications.map((c) => (
-            <RowBetween
-              key={c.id}
-              left={
-                <span>
-                  <span style={{ fontWeight: 700 }}>{c.name}</span>
-                  {c.issuer ? `  ${c.issuer}` : ""}
-                </span>
-              }
-              right={<span style={{ color: MUTED }}>{c.date}</span>}
-            />
-          ))}
-        </Section>
-      )}
-
-      {/* Achievements */}
-      {awards.length > 0 && !sectionHidden("awards") && (
-        <Section title="Achievements">
-          {awards.map((a) => (
-            <div key={a.id} style={{ marginBottom: "3px" }}>
-              <RowBetween
-                left={
-                  <span>
-                    <span style={{ fontWeight: 700 }}>{a.title}</span>
-                    {a.organization ? `  ${a.organization}` : ""}
-                  </span>
-                }
-                right={<span style={{ color: MUTED }}>{a.date}</span>}
-              />
-              {a.description && <div style={{ color: MUTED }}>{a.description}</div>}
-            </div>
-          ))}
-        </Section>
-      )}
-
-      {/* Languages */}
-      {languages.length > 0 && !sectionHidden("languages") && (
-        <Section title="Languages">
-          <div>
-            {languages.map((l) => `${l.name} (${l.proficiency})`).join("   ·   ")}
-          </div>
-        </Section>
-      )}
-
-      {/* Strengths */}
-      {strengths.length > 0 && !sectionHidden("strengths") && (
-        <Section title="Strengths">
-          {strengths.map((s) => (
-            <Bullet key={s.id}>{s.name}</Bullet>
-          ))}
-        </Section>
-      )}
-
-      {/* Hobbies */}
-      {hobbies.length > 0 && !sectionHidden("hobbies") && (
-        <Section title="Hobbies">
-          {hobbies.map((h) => (
-            <Bullet key={h.id}>{h.name}</Bullet>
-          ))}
-        </Section>
-      )}
+      {/* Sections in user-configurable order; a hidden `section:<key>`
+          token (auto-fit or manual override) skips the whole section. */}
+      {sectionOrder
+        .filter((key) => !sectionHidden(key))
+        .map((key) => (
+          <React.Fragment key={key}>{sections[key]()}</React.Fragment>
+        ))}
     </div>
   );
 });

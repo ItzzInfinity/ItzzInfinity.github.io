@@ -6,6 +6,8 @@ import type { ResumeDocumentProps } from "@/components/resume/ResumeDocument";
 import type { DocumentProps } from "@react-pdf/renderer";
 import { filterByDomain } from "@/lib/filter";
 import { isOverflowing, removableItemIds, countPdfPages } from "@/lib/autofit";
+import { DEFAULT_SECTION_ORDER, SectionKey } from "@/lib/sections";
+import AdvancedPanel from "@/components/download/AdvancedPanel";
 
 type PageMode = "1" | "2";
 
@@ -24,9 +26,18 @@ export default function DownloadPage() {
   const [overflowed, setOverflowed] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [contentHeight, setContentHeight] = useState(A4_PX_HEIGHT);
+  // Advanced panel: runtime-only section reorder + manual content override.
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([...DEFAULT_SECTION_ORDER]);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualHidden, setManualHidden] = useState<string[]>([]);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const singlePage = pageMode === "1";
+
+  // Hidden ids the preview/PDF actually use: the user's explicit selection in
+  // manual mode, the auto-fit result in 1-page mode, nothing in 2-page mode.
+  const effectiveHidden = manualMode ? manualHidden : singlePage ? hiddenBulletIds : [];
 
   // Track the preview's rendered height so 2-page mode can draw a page break
   // at each A4 boundary instead of showing one long continuous sheet.
@@ -92,6 +103,7 @@ export default function DownloadPage() {
       strengths: store.strengths,
       headerTitle,
       summaryText,
+      sectionOrder,
     }),
     [
       selectedDomain,
@@ -108,23 +120,33 @@ export default function DownloadPage() {
       store.strengths,
       headerTitle,
       summaryText,
+      sectionOrder,
     ]
   );
 
-  // Restart the fit pass whenever the resume content or page mode changes.
-  // Auto-fit only runs in single-page mode; 2-page mode lets content flow.
+  // Manual selections reference the current domain's bullet ids, so a domain
+  // switch always drops back to auto-fit.
   useEffect(() => {
+    setManualMode(false);
+    setManualHidden([]);
+  }, [selectedDomain]);
+
+  // Restart the fit pass whenever the resume content, section order or page
+  // mode changes. Auto-fit only runs in single-page mode (2-page mode lets
+  // content flow) and is suspended entirely while manual override is active.
+  useEffect(() => {
+    if (manualMode) return;
     setHiddenBulletIds([]);
     setOverflowed(false);
     setFitting(singlePage);
-  }, [selectedDomain, customText, removableOrder, singlePage]);
+  }, [selectedDomain, customText, removableOrder, singlePage, sectionOrder, manualMode]);
 
   // Convergent auto-fit (single-page only): remove one lowest-priority bullet
   // per render until the preview fits one A4 page, or nothing is left to trim.
   // If it still overflows after exhausting removable bullets, flag overflow so
   // the user can switch to a 2-page layout.
   useLayoutEffect(() => {
-    if (!fitting) return;
+    if (!fitting || manualMode) return;
     const el = previewRef.current;
     if (!el) return;
     if (isOverflowing(el) && hiddenBulletIds.length < removableOrder.length) {
@@ -133,7 +155,7 @@ export default function DownloadPage() {
       setFitting(false);
       setOverflowed(isOverflowing(el));
     }
-  }, [fitting, hiddenBulletIds.length, removableOrder]);
+  }, [fitting, manualMode, hiddenBulletIds.length, removableOrder]);
 
   // Ref mirror so the verify pass can read the HTML pass's result without
   // depending on hiddenBulletIds (which it also writes).
@@ -148,7 +170,7 @@ export default function DownloadPage() {
   // one effect invocation and hiddenBulletIds is written once at the end, so
   // this cannot re-trigger itself.
   useEffect(() => {
-    if (!singlePage || fitting) return;
+    if (!singlePage || fitting || manualMode) return;
     let cancelled = false;
     (async () => {
       setVerifying(true);
@@ -185,7 +207,53 @@ export default function DownloadPage() {
     return () => {
       cancelled = true;
     };
-  }, [fitting, singlePage, removableOrder, baseDocProps]);
+  }, [fitting, singlePage, manualMode, removableOrder, baseDocProps]);
+
+  // Manual override: never trim, but still render the real PDF once per
+  // change to warn (not fix) when the explicit selection exceeds one page.
+  useEffect(() => {
+    if (!manualMode || !singlePage) return;
+    let cancelled = false;
+    (async () => {
+      setVerifying(true);
+      try {
+        const [{ pdf }, mod] = await Promise.all([
+          import("@react-pdf/renderer"),
+          import("@/components/resume/ResumeDocument"),
+        ]);
+        const element = React.createElement(mod.default, {
+          ...baseDocProps,
+          hiddenBulletIds: manualHidden,
+        }) as React.ReactElement<DocumentProps>;
+        const blob = await pdf(element).toBlob();
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        if (!cancelled) setOverflowed(countPdfPages(bytes) > 1);
+      } finally {
+        if (!cancelled) setVerifying(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [manualMode, singlePage, manualHidden, baseDocProps]);
+
+  function handleManualModeChange(on: boolean) {
+    setManualMode(on);
+    if (on) {
+      // Halt any in-flight auto-fit and seed the checkboxes from its result,
+      // so manual mode starts at "what you currently see".
+      setFitting(false);
+      setVerifying(false);
+      setManualHidden(singlePage ? [...hiddenBulletIds] : []);
+    }
+    // Turning it off restarts the auto-fit pass (reset effect keys on manualMode).
+  }
+
+  function handleToggleHidden(id: string, hide: boolean) {
+    setManualHidden((prev) =>
+      hide ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((x) => x !== id)
+    );
+  }
 
   const trimmedBullets = hiddenBulletIds.filter((id) => !id.startsWith("section:")).length;
   const trimmedSections = hiddenBulletIds
@@ -201,8 +269,9 @@ export default function DownloadPage() {
       ]);
       const props: ResumeDocumentProps = {
         ...baseDocProps,
-        // In 2-page mode nothing is trimmed; react-pdf paginates automatically.
-        hiddenBulletIds: singlePage ? hiddenBulletIds : [],
+        // Manual override wins; otherwise 1-page mode uses the auto-fit trim
+        // and 2-page mode trims nothing (react-pdf paginates automatically).
+        hiddenBulletIds: effectiveHidden,
       };
       const element = React.createElement(mod.default, props) as React.ReactElement<DocumentProps>;
       const blob = await pdf(element).toBlob();
@@ -297,25 +366,58 @@ export default function DownloadPage() {
             />
           </div>
 
+          <div>
+            <button
+              onClick={() => setAdvancedOpen((o) => !o)}
+              className="w-full flex items-center justify-between text-sm text-slate-400 hover:text-slate-200 border border-slate-700 rounded-lg px-3 py-2 transition-colors"
+            >
+              <span className="uppercase tracking-wide">Advanced</span>
+              <span>{advancedOpen ? "▾" : "▸"}</span>
+            </button>
+            {advancedOpen && (
+              <div className="mt-3">
+                <AdvancedPanel
+                  sectionOrder={sectionOrder}
+                  onSectionOrderChange={setSectionOrder}
+                  manualMode={manualMode}
+                  onManualModeChange={handleManualModeChange}
+                  manualHidden={new Set(manualHidden)}
+                  onToggleHidden={handleToggleHidden}
+                  domainId={selectedDomain}
+                  experience={filteredExperience}
+                  projects={filteredProjects}
+                />
+              </div>
+            )}
+          </div>
+
           <button
             onClick={handleDownload}
-            disabled={downloading || (singlePage && (fitting || verifying))}
+            disabled={downloading || (singlePage && !manualMode && (fitting || verifying))}
             className="w-full bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-900 font-semibold py-3 rounded-lg transition-colors"
           >
             {downloading
               ? "Generating PDF..."
-              : singlePage && (fitting || verifying)
+              : singlePage && !manualMode && (fitting || verifying)
               ? "Fitting to one page..."
               : "Download PDF"}
           </button>
 
-          {singlePage && verifying && (
+          {singlePage && verifying && !manualMode && (
             <p className="text-xs text-slate-400">
               Verifying one-page fit against the actual PDF...
             </p>
           )}
 
-          {singlePage && trimmedBullets > 0 && (
+          {manualMode && (
+            <p className="text-xs text-cyan-400">
+              Manual override active — {manualHidden.length} item
+              {manualHidden.length === 1 ? "" : "s"} hidden, auto-fit paused.
+              {singlePage && verifying ? " Checking page count..." : ""}
+            </p>
+          )}
+
+          {singlePage && !manualMode && trimmedBullets > 0 && (
             <p className="text-xs text-amber-400">
               {trimmedBullets} low-priority bullet{trimmedBullets > 1 ? "s" : ""}
               {trimmedSections.length > 0
@@ -328,7 +430,9 @@ export default function DownloadPage() {
           {singlePage && overflowed && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 space-y-2">
               <p className="text-xs text-amber-300">
-                This resume still overflows one page even after trimming. Switch to a 2-page layout to show everything.
+                {manualMode
+                  ? "Your manual selection overflows one page. Uncheck more items or switch to a 2-page layout."
+                  : "This resume still overflows one page even after trimming. Switch to a 2-page layout to show everything."}
               </p>
               <button
                 onClick={() => setPageMode("2")}
@@ -360,7 +464,8 @@ export default function DownloadPage() {
               headerTitle={headerTitle}
               summaryText={summaryText}
               singlePage={singlePage}
-              hiddenBulletIds={new Set(singlePage ? hiddenBulletIds : [])}
+              hiddenBulletIds={new Set(effectiveHidden)}
+              sectionOrder={sectionOrder}
             />
             {/* Page-break guides for the 2-page layout */}
             {pageBreaks.map((top, i) => (
