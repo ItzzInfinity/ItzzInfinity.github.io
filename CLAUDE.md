@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A cross-platform web application that doubles as a personal portfolio website and a dynamic resume generator. The user maintains a single pool of profile data and maps content to domains (VLSI / RTL Design / Verification / FPGA Design / Embedded / PCB Design). The Download page assembles a one-page PDF resume filtered to the selected domain, trimming lower-priority bullets when content overflows. It deploys as a static site to GitHub Pages (`ItzzInfinity.github.io`, served at the domain root).
 
-See `FSD.md` for the full Functional Specification. The "What I need" section there is the live work backlog.
+See `FSD.md` for the full Functional Specification. The "Status Summary" table at the top of it is the single-table view of what's done / to do / planned; the "What I need" section is the live work backlog.
 
 ## Node is not on PATH by default
 
@@ -25,7 +25,8 @@ export NVM_DIR="$HOME/.nvm" && source "$NVM_DIR/nvm.sh" && nvm use 20
 - **Zustand** — global state for the entire data model (persisted to `localStorage`)
 - **@react-pdf/renderer** — generates the *downloaded* resume as a true vector PDF (this is the layout that must match `template.pdf`)
 - **PyMuPDF** (Python) — the `scripts/` PDF text + hyperlink extraction tooling
-- html2canvas + jspdf and @dnd-kit are installed but currently unused (legacy/planned).
+- - **@dnd-kit** — drag-and-drop reordering in Settings (`src/components/settings/SortableList.tsx`: skills list order and per-item bullet priority)
+- html2canvas + jspdf are installed but currently unused (legacy).
 
 ## Commands
 
@@ -64,7 +65,7 @@ python3 scripts/extract_template.py [template.pdf]       # -> parsed/template_sp
 
 ### State (`src/store/useResumeStore.ts`)
 
-One Zustand store holds the whole data model (`profile`, `domains`, `skills`, `experience`, `education`, `projects`, `certifications`, `awards`, `languages`, `hobbies`, `strengths`, `references`), persisted to `localStorage` under `resume-builder-v2` via `src/lib/storage.ts` (abstracted so it can later become a remote API). `src/lib/seed.ts` is the **canonical** data (real profile for Anjan Prasad, merged from `~/Downloads/all_resumes/master_profile.json` + `template.pdf`; project source links from github.com/ItzzInfinity repos); localStorage is just a runtime cache for UI edits. Each `Domain` carries an optional `resumeTitle` (shown under the name when that domain is selected) and an optional `summary` (used for the resume Summary section and as the domain page intro; both fall back to the profile values). Domain portfolio pages show summary/skills/projects only — full experience lives on the About page.
+One Zustand store holds the whole data model (`profile`, `domains`, `skills`, `experience`, `education`, `projects`, `certifications`, `awards`, `languages`, `hobbies`, `strengths`, `references`), persisted to `localStorage` under `resume-builder-v2` via `src/lib/storage.ts` (abstracted so it can later become a remote API). The Settings → Backup tab (`src/components/settings/BackupManager.tsx` + `src/lib/backup.ts`) exports/imports the whole store as validated JSON, resets to seed, and can export the store as a ready-to-commit `seed.ts` — the promotion path from UI edits to canonical seed data. `src/lib/seed.ts` is the **canonical** data (real profile for Anjan Prasad, merged from `~/Downloads/all_resumes/master_profile.json` + `template.pdf`; project source links from github.com/ItzzInfinity repos); localStorage is just a runtime cache for UI edits. Each `Domain` carries an optional `resumeTitle` (shown under the name when that domain is selected) and an optional `summary` (used for the resume Summary section and as the domain page intro; both fall back to the profile values). Domain portfolio pages show summary/skills/projects only — full experience lives on the About page.
 
 **Seed signature (important):** `loadData` stores a hash of the bundled seed (`SEED_SIG`) alongside the cache. When `seed.ts` changes, the hash changes and every client **auto-discards its cached data and adopts the new seed** on next load — without this, a shallow `{...seed, ...cached}` merge let a visitor's stale `domains`/`projects` array silently override new seed content (this is why per-domain titles and new repos "worked on localhost but not on the deployed site": the deployed origin had a stale cache). Editing `seed.ts` is therefore enough to propagate data to all clients on redeploy; no manual version bump needed.
 

@@ -1,4 +1,46 @@
 <!-- Functional Specification Document (FSD)  -->
+
+# Status Summary
+
+One-table view of everything planned in this document and where it stands. Status legend: ✅ Done · 🔶 Partial · 🔲 To do · 💡 Planned (future).
+
+| # | Area | Item | Status | Notes |
+|---|------|------|--------|-------|
+| 1 | Foundation | Next.js static-export app with routing for Home / About / VLSI (+RTL, Verification, FPGA) / Embedded / PCB / Settings / Download | ✅ Done | Phases 1–3 |
+| 2 | Foundation | GitHub Pages deploy with CI gate (type-check → jest → self-check before build) | ✅ Done | `deploy.yml` |
+| 3 | Foundation | `/settings` & `/download` hidden from public nav (easter-egg access) | ✅ Done | Build-order step 11 |
+| 4 | Data | Data schema + Zustand store persisted to localStorage, storage layer abstracted for future backend | ✅ Done | Phase 2 |
+| 5 | Data | Seed data extracted from real resume PDFs incl. hyperlinks (PyMuPDF scripts) + `template.pdf` spec extraction | ✅ Done | "What I need" items |
+| 6 | Data | Seed-signature mechanism: stale client caches auto-discarded when `seed.ts` changes | ✅ Done | Fixed deployed-site staleness bug |
+| 7 | Settings | CRUD for profile, skills, experience, projects, education | ✅ Done | Phase 4.1 (partial scope) |
+| 8 | Settings | CRUD for domains, certifications, awards, languages, hobbies, strengths, references | 🔲 To do | Editable only via seed.ts / JSON import today |
+| 9 | Settings | Drag-and-drop reordering (skills list, project/experience bullets) via @dnd-kit `SortableList` | ✅ Done | Phase 4.2 |
+| 10 | Settings | Bullet priority + domain-mapping controls | ✅ Done | Phase 4.3/4.4 |
+| 11 | Settings | JSON backup export/import + reset-to-seed (Backup tab, `src/lib/backup.ts`) | ✅ Done | Improvement #2 |
+| 12 | Settings | "Export as seed.ts" round-trip (promote UI edits to canonical seed) | ✅ Done | Improvement #3 |
+| 13 | Resume | One-page auto-fit: priority-based bullet trimming + real-PDF page-count verification pass | ✅ Done | Phase 6; self-verifying |
+| 14 | Resume | Optional-section hiding after bullets exhausted (rule 10: hobbies → strengths → languages → awards → certifications) | ✅ Done | |
+| 15 | Resume | 1-page / 2-page toggle; 2-page preview shows page-break guides | ✅ Done | |
+| 16 | Resume | HTML preview is a faithful mirror of the downloaded PDF (order, layout, type scale) | ✅ Done | Phase 5 |
+| 17 | Resume | Download page: domain radios with VLSI sub-domains, custom text input, one-click PDF download | ✅ Done | Phase 7 |
+| 18 | Resume | Per-domain resume title + per-domain summary (also used as portfolio page intro) | ✅ Done | |
+| 19 | Resume | Project `Source` links, conditional 2-col bullets, 2-line education layout, flexed heading rows (no text collisions) | ✅ Done | |
+| 20 | Resume | References section + footer on the resume (FSD rule 8) | 🔲 To do | Neither renderer outputs them |
+| 21 | QA | Self-check tooling: render + trim + geometric layout verification for every domain (`scripts/self-check.tsx`) | ✅ Done | All 6 domains pass; runs in CI |
+| 22 | Improvement | ATS-friendly PDF metadata + domain keyword check | 🔲 To do | Improvement #4 |
+| 23 | Improvement | Trim preview with pin ("never trim this") controls on Download page | 🔲 To do | Improvement #5 |
+| 24 | Improvement | Per-project date ranges, right-aligned like experience | 🔲 To do | Improvement #6 |
+| 25 | Improvement | Section reorder from Preview page (renderers currently hard-code section order) | 🔲 To do | Improvement #7 |
+| 26 | Improvement | Custom domains end-to-end (dynamic portfolio routes from the store) | 🔲 To do | Improvement #8 |
+| 27 | Improvement | Resume version history (last N generated PDFs in IndexedDB) | 🔲 To do | Improvement #9 |
+| 28 | Improvement | Lighthouse/mobile pass (preview fit-width, tap targets) | 🔲 To do | Improvement #10 |
+| 29 | Future | Multiple resume templates | 💡 Planned | Phase 9 |
+| 30 | Future | Cloud login + database sync | 💡 Planned | Phase 9 |
+| 31 | Future | Analytics for downloaded resume versions | 💡 Planned | Phase 9 |
+| 32 | Future | AI-assisted summary & bullet rewriting | 💡 Planned | Phase 9 |
+| 33 | Future | Theme customization for portfolio and resume | 💡 Planned | Phase 9 |
+| 34 | Future | Per-section public/private visibility controls | 🔶 Partial | Settings/Download hidden; per-section controls not built |
+
 # Thinking out Loud -  Will organize later
 1. Need a way to generate resume as PDF on the go.
 2. This should be cross-platform (Windows, Mac, Linux, Android, iOS).
@@ -247,9 +289,9 @@ The first working version should include:
 
 Concrete next steps that would make the product meaningfully better, roughly in order of value-for-effort:
 
-1. **Run the self-check in CI** — add a GitHub Actions step that runs `npx tsc --noEmit`, `npm test`, and `npx tsx scripts/self-check.tsx` before deploy, so a seed/renderer change that breaks one-page fit or overlaps text can never reach the live site.
-2. **JSON import/export backup in Settings** — one button to download the whole store as JSON and one to restore it; protects UI edits (which live only in localStorage and are discarded whenever the seed changes) and doubles as the migration path to a future backend.
-3. **Editable seed round-trip** — a script (or Settings button) that exports the current store as a ready-to-paste `seed.ts` body, so content edited in the UI can be promoted to the canonical seed instead of retyping it in code.
+1. **Run the self-check in CI** — add a GitHub Actions step that runs `npx tsc --noEmit`, `npm test`, and `npx tsx scripts/self-check.tsx` before deploy, so a seed/renderer change that breaks one-page fit or overlaps text can never reach the live site. - **Done** (`deploy.yml` build job now runs type-check → jest → PyMuPDF install → `self-check.tsx` before `npm run build`; any failure blocks the deploy.)
+2. **JSON import/export backup in Settings** — one button to download the whole store as JSON and one to restore it; protects UI edits (which live only in localStorage and are discarded whenever the seed changes) and doubles as the migration path to a future backend. - **Done** (Settings → Backup tab: "Download JSON backup", validated import that replaces the store, and a "Reset to seed" button; `src/lib/backup.ts` + tests.)
+3. **Editable seed round-trip** — a script (or Settings button) that exports the current store as a ready-to-paste `seed.ts` body, so content edited in the UI can be promoted to the canonical seed instead of retyping it in code. - **Done** (Settings → Backup → "Export as seed.ts" downloads a complete `seed.ts`; paste over `src/lib/seed.ts` and commit — the seed-signature mechanism propagates it to all clients.)
 4. **ATS-friendly PDF metadata & keyword check** — set PDF title/author/subject/keywords from the profile + domain, and add a self-check rule that flags when a domain's resume is missing its own domain keywords (e.g. "UVM" absent from the verification resume after heavy trimming).
 5. **Trim preview/control** — in the Download page, list which bullets/sections auto-fit removed (they're already known ids) with pin buttons ("never trim this"), giving manual override without breaking the priority system.
 6. **Per-project date ranges** — the old resumes carry project durations (e.g. "Nov 2025 – Ongoing"); add optional `startDate`/`endDate` to `Project` and right-align them like experience.
@@ -297,3 +339,4 @@ Concrete next steps that would make the product meaningfully better, roughly in 
   - In PCB Design add KiCad, Altium (Beginner), EasyEDA. - **Done** (added as a "PCB Design" skill category mapped to the pcb domain; they also appear in the PCB summary.)
   - If resume is 2 pages, add more points to fill it up (page 2 was mostly empty); find resources in old references. - **Done** (mined the old resume PDFs for real content: extra Sodexo/Electro Meter experience bullets (fault diagnosis, NABL documentation, plant visits, Sheets/Apps Script automation), descriptive bullets for the ALU and ESP32 Signal Generator projects, and two recovered projects — Ultimate Pi Sound Box and SIS Report Downloader. All seeded at lower priority so 1-page mode trims them first; the embedded 2-page layout now fills ~44% of page 2 (was ~10%). That exhausts what the references contain — filling page 2 further needs new writing, not extraction.)
   - Education should be a two-line layout: bold degree with right-aligned dates, then "Institute · Location · Score" as a muted detail line (per screenshot). - **Done** (both `ResumeDocument` and `ResumePreview` render education as two lines with an en-dash date range; verified visually and geometrically via self-check.)
+  - Drag-and-drop reordering in Settings (Phase 4.2) — **Done** (`SortableList` built on the previously-unused @dnd-kit: the Skills list is drag-reorderable (resume skill order follows it; priorities renumbered), and project/experience bullets can be dragged inside the edit form to set trim priority, top = kept longest.)

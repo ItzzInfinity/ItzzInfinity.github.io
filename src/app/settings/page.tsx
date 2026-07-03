@@ -6,8 +6,9 @@ import SkillsManager from "@/components/settings/SkillsManager";
 import ExperienceManager from "@/components/settings/ExperienceManager";
 import ProjectsManager from "@/components/settings/ProjectsManager";
 import EducationManager from "@/components/settings/EducationManager";
+import BackupManager from "@/components/settings/BackupManager";
 
-type Tab = "profile" | "skills" | "experience" | "projects" | "education";
+type Tab = "profile" | "skills" | "experience" | "projects" | "education" | "backup";
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "profile", label: "Profile" },
@@ -15,6 +16,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "experience", label: "Experience" },
   { id: "projects", label: "Projects" },
   { id: "education", label: "Education" },
+  { id: "backup", label: "Backup" },
 ];
 
 export default function SettingsPage() {
@@ -50,6 +52,7 @@ export default function SettingsPage() {
       {activeTab === "experience" && <ExperienceManager />}
       {activeTab === "projects" && <ProjectsManager />}
       {activeTab === "education" && <EducationManager />}
+      {activeTab === "backup" && <BackupManager />}
     </div>
   );
 }

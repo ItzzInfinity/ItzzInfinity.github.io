@@ -57,6 +57,10 @@ interface ResumeStore extends AppData {
   addReference: (ref: Omit<Reference, "id">) => void;
   updateReference: (id: string, updates: Partial<Reference>) => void;
   deleteReference: (id: string) => void;
+
+  // Bulk operations (backup import / drag reordering)
+  importData: (data: AppData) => void;
+  reorderSkills: (skills: Skill[]) => void;
 }
 
 function persist(data: AppData) {
@@ -267,6 +271,19 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
   deleteReference: (id) =>
     set((s) => {
       const next = { ...s, references: s.references.filter((r) => r.id !== id) };
+      persist(next);
+      return next;
+    }),
+
+  importData: (data) =>
+    set((s) => {
+      const next = { ...s, ...data };
+      persist(next);
+      return next;
+    }),
+  reorderSkills: (skills) =>
+    set((s) => {
+      const next = { ...s, skills };
       persist(next);
       return next;
     }),

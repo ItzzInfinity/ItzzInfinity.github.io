@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
 import { Project, ProjectBullet } from "@/types";
 import { v4 as uuidv4 } from "uuid";
+import SortableList from "./SortableList";
 
 const blankProj = (): Omit<Project, "id"> => ({
   title: "", domainIds: [], sourceLink: "", tools: [], bullets: [],
@@ -79,13 +80,21 @@ export default function ProjectsManager() {
             className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500" />
           <button onClick={addBullet} className="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-3 rounded-lg">+</button>
         </div>
-        {form.bullets.map((b, i) => (
-          <div key={b.id} className="flex items-center justify-between text-xs text-slate-300 bg-slate-700 px-3 py-2 rounded">
-            <span className="text-slate-500 mr-2">P{i + 1}</span>
-            <span className="flex-1">{b.text}</span>
-            <button onClick={() => setForm((f) => ({ ...f, bullets: f.bullets.filter((x) => x.id !== b.id) }))} className="text-red-400 ml-2">✕</button>
-          </div>
-        ))}
+        {form.bullets.length > 0 && (
+          <p className="text-xs text-slate-500">Drag ⠿ to set bullet priority (top = kept longest when trimming).</p>
+        )}
+        <SortableList
+          items={form.bullets}
+          onReorder={(next) => setForm((f) => ({ ...f, bullets: next.map((b, i) => ({ ...b, priority: i + 1 })) }))}
+          className="space-y-1"
+          renderItem={(b, i) => (
+            <div className="flex items-center justify-between text-xs text-slate-300 bg-slate-700 px-3 py-2 rounded">
+              <span className="text-slate-500 mr-2">P{i + 1}</span>
+              <span className="flex-1">{b.text}</span>
+              <button onClick={() => setForm((f) => ({ ...f, bullets: f.bullets.filter((x) => x.id !== b.id) }))} className="text-red-400 ml-2">✕</button>
+            </div>
+          )}
+        />
         <div className="flex gap-2">
           <button onClick={save} className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-sm font-semibold px-4 py-2 rounded-lg">{editId ? "Update" : "Add"}</button>
           {editId && <button onClick={() => { setEditId(null); setForm(blankProj()); }} className="text-sm text-slate-400 px-3">Cancel</button>}

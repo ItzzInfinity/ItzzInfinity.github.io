@@ -25,6 +25,17 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Gate the deploy on the full self-check suite (FSD improvement #1):
+      # type-check, unit tests, then render every domain's real resume PDF,
+      # trim to one page, and verify the layout geometrically via PyMuPDF.
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: npm test
+      - name: Install PyMuPDF (geometric layout check)
+        run: python3 -m pip install -r scripts/requirements.txt
+      - name: Resume self-check (all domains fit one page, no overlaps)
+        run: npx tsx scripts/self-check.tsx
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

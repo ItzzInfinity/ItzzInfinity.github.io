@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
 import { Skill } from "@/types";
-import { v4 as uuidv4 } from "uuid";
+import SortableList from "./SortableList";
 
 const blank = (): Omit<Skill, "id"> => ({
   name: "",
@@ -13,7 +13,7 @@ const blank = (): Omit<Skill, "id"> => ({
 });
 
 export default function SkillsManager() {
-  const { skills, domains, addSkill, updateSkill, deleteSkill } = useResumeStore();
+  const { skills, domains, addSkill, updateSkill, deleteSkill, reorderSkills } = useResumeStore();
   const [form, setForm] = useState<Omit<Skill, "id">>(blank());
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -109,9 +109,13 @@ export default function SkillsManager() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        {skills.map((sk) => (
-          <div key={sk.id} className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-4 py-3">
+      <p className="text-xs text-slate-500 mb-2">Drag ⠿ to reorder — resume skill order follows this list (priority is renumbered).</p>
+      <SortableList
+        items={skills}
+        onReorder={(next) => reorderSkills(next.map((sk, i) => ({ ...sk, priority: i + 1 })))}
+        className="space-y-2"
+        renderItem={(sk) => (
+          <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-lg px-4 py-3">
             <div>
               <span className="text-slate-200 text-sm font-medium">{sk.name}</span>
               <span className="text-slate-500 text-xs ml-2">{sk.category}</span>
@@ -122,8 +126,8 @@ export default function SkillsManager() {
               <button onClick={() => deleteSkill(sk.id)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
             </div>
           </div>
-        ))}
-      </div>
+        )}
+      />
     </div>
   );
 }
