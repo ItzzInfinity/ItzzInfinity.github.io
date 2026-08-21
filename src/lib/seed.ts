@@ -62,9 +62,9 @@ export const seedData: AppData = {
     { id: "sk-fcov", name: "Functional Coverage", category: "Verification", domainIds: ["vlsi", "verification"], priority: 3, visible: true },
     { id: "sk-ccov", name: "Code Coverage", category: "Verification", domainIds: ["vlsi", "verification"], priority: 3, visible: true },
     // Protocols
-    { id: "sk-uart", name: "UART", category: "Protocols", domainIds: ["vlsi", "rtl", "verification", "fpga", "embedded"], priority: 1, visible: true },
-    { id: "sk-spi", name: "SPI", category: "Protocols", domainIds: ["vlsi", "rtl", "fpga", "embedded"], priority: 1, visible: true },
-    { id: "sk-i2c", name: "I2C", category: "Protocols", domainIds: ["vlsi", "rtl", "fpga", "embedded"], priority: 1, visible: true },
+    { id: "sk-uart", name: "UART", category: "Protocols", domainIds: ["vlsi", "rtl", "verification", "fpga", "embedded", "pcb"], priority: 1, visible: true },
+    { id: "sk-spi", name: "SPI", category: "Protocols", domainIds: ["vlsi", "rtl", "fpga", "embedded", "pcb"], priority: 1, visible: true },
+    { id: "sk-i2c", name: "I2C", category: "Protocols", domainIds: ["vlsi", "rtl", "fpga", "embedded", "pcb"], priority: 1, visible: true },
     { id: "sk-apb", name: "APB", category: "Protocols", domainIds: ["vlsi", "verification", "rtl"], priority: 2, visible: true },
     // FPGAs worked on
     { id: "sk-cyclone", name: "Altera Cyclone II", category: "FPGAs Worked On", domainIds: ["fpga", "vlsi"], priority: 1, visible: true },
@@ -79,9 +79,11 @@ export const seedData: AppData = {
     { id: "sk-spyglass", name: "Spyglass", category: "EDA Tools", domainIds: ["vlsi", "rtl"], priority: 2, visible: true },
     { id: "sk-dc", name: "Design Compiler", category: "EDA Tools", domainIds: ["vlsi", "rtl"], priority: 3, visible: true },
     { id: "sk-gowin", name: "Gowin EDA", category: "EDA Tools", domainIds: ["fpga"], priority: 2, visible: true },
+    { id: "sk-yosys", name: "Yosys / nextpnr", category: "EDA Tools", domainIds: ["fpga", "rtl"], priority: 3, visible: true },
+    { id: "sk-icarus", name: "Icarus Verilog / GTKWave", category: "EDA Tools", domainIds: ["fpga", "rtl", "verification"], priority: 3, visible: true },
     // PCB design (from the PCB_Design resume variant)
-    { id: "sk-kicad", name: "KiCad", category: "PCB Design", domainIds: ["pcb"], priority: 1, visible: true },
-    { id: "sk-altium", name: "Altium (Beginner)", category: "PCB Design", domainIds: ["pcb"], priority: 2, visible: true },
+    { id: "sk-kicad", name: "KiCad", category: "PCB Design", domainIds: ["pcb", "embedded"], priority: 1, visible: true },
+    { id: "sk-altium", name: "Altium (Beginner)", category: "PCB Design", domainIds: ["pcb", "embedded"], priority: 2, visible: true },
     { id: "sk-easyeda", name: "EasyEDA", category: "PCB Design", domainIds: ["pcb"], priority: 1, visible: true },
     // Programming
     { id: "sk-c", name: "C", category: "Programming", domainIds: ["embedded", "fpga"], priority: 1, visible: true },
@@ -213,13 +215,25 @@ export const seedData: AppData = {
       ],
     },
     {
+      id: "prj-tang9k",
+      title: "Tang Nano 9K - 60 FPGA Projects (Open-Source Flow)",
+      domainIds: ["fpga", "vlsi", "rtl"],
+      sourceLink: "https://github.com/ItzzInfinity/TangNano-9K-projects",
+      tools: ["Verilog", "Gowin GW1NR-9", "Yosys", "nextpnr", "Icarus Verilog"],
+      bullets: [
+        { id: "prb-tang-1", text: "Progressive 60-project curriculum on the Tang Nano 9K (GW1NR-9): clock division, UART/SPI/I2C masters, DDS generation, PSRAM framebuffers and VGA/HDMI video timing.", priority: 1, domainIds: ["fpga", "vlsi", "rtl"] },
+        { id: "prb-tang-2", text: "Built on a fully open-source flow - Icarus Verilog and GTKWave, Yosys synthesis, nextpnr place-and-route, Apicula bitstream packing - driven by a per-project Makefile.", priority: 2, domainIds: ["fpga", "vlsi", "rtl"] },
+        { id: "prb-tang-3", text: "Every design ships with a self-checking testbench and a .cst pin-constraints file, so simulation to hardware is one command per stage.", priority: 3, domainIds: ["fpga", "vlsi", "rtl"] },
+      ],
+    },
+    {
       id: "prj-spo2",
       title: "IoT Pulse Oximeter (SpO2 + Heart Rate)",
       domainIds: ["embedded", "pcb"],
       sourceLink: "https://github.com/ItzzInfinity/IoT-Based-SpO2-and-Pulse-Oximeter-with-MAX30102",
       tools: ["ESP8266", "MAX30102", "I2C", "SSD1306 OLED"],
       bullets: [
-        { id: "prb-spo2-1", text: "Portable SpO2 and heart-rate monitor using an ESP8266 and MAX30102 bio-sensor over I2C with a live OLED readout.", priority: 1, domainIds: ["embedded", "pcb"] },
+        { id: "prb-spo2-1", text: "Portable SpO2 and heart-rate monitor using an ESP8266 and MAX30102 bio-sensor over I2C with a live OLED readout.", priority: 2, domainIds: ["embedded", "pcb"] },
       ],
     },
     {
@@ -229,7 +243,7 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/Signal-Generator-Using-ESP32",
       tools: ["ESP32", "AD9833 DDS", "Wi-Fi", "I2C"],
       bullets: [
-        { id: "prb-siggen-1", text: "Web-controlled DDS function generator (sine / square / triangle) built on an ESP32 driving an AD9833 module.", priority: 1, domainIds: ["embedded", "pcb"] },
+        { id: "prb-siggen-1", text: "Web-controlled DDS function generator (sine / square / triangle) built on an ESP32 driving an AD9833 module.", priority: 2, domainIds: ["embedded", "pcb"] },
         // Fillers from the PCB_Design / Embedded resume variants.
         { id: "prb-siggen-2", text: "Interfaced with the AD9833 over SPI, with frequency and waveform selection from a hosted web page or serial control.", priority: 3, domainIds: ["embedded", "pcb"] },
         { id: "prb-siggen-3", text: "Enabled signal tuning up to 1 MHz with stable output for lab testing and waveform analysis.", priority: 4, domainIds: ["embedded", "pcb"] },
@@ -237,12 +251,15 @@ export const seedData: AppData = {
     },
     {
       id: "prj-fmradio",
-      title: "ESP FM Radio Receiver",
-      domainIds: ["embedded", "pcb"],
+      title: "ESP FM Radio Receiver (Custom-PCB)",
+      domainIds: ["pcb", "embedded"],
       sourceLink: "https://github.com/ItzzInfinity/FM-Radio-Using-ESP-12E-and-RDA5807M",
-      tools: ["ESP-12E", "RDA5807M", "PAM8403", "TP4056", "I2C"],
+      tools: ["KiCad", "ESP32-C3", "ESP-12E", "RDA5807M", "I2C"],
       bullets: [
-        { id: "prb-fm-1", text: "Battery-powered FM receiver with ESP-12E + RDA5807M tuner, PAM8403 audio amplifier, and TP4056 Li-ion charging.", priority: 2, domainIds: ["embedded", "pcb"] },
+        { id: "prb-fm-2", text: "Designed a 2-layer 47 x 28 mm KiCad carrier board with footprints for two alternate MCUs - ESP32-C3 SuperMini on top, ESP-12E on the bottom - sharing one I2C bus, the RDA5807M tuner and an AMS1117 3.3 V rail.", priority: 1, domainIds: ["pcb", "embedded"] },
+        { id: "prb-fm-1", text: "Battery-powered receiver with a PAM8403 amplifier and TP4056 Li-ion charging; the antenna solders to a plated M3 mounting hole.", priority: 2, domainIds: ["pcb", "embedded"] },
+        { id: "prb-fm-3", text: "Firmware serves a Wi-Fi web UI for presets, volume, seek and tuning, with OTA reflashing; one pin map compiles for either core.", priority: 3, domainIds: ["embedded", "pcb"] },
+        { id: "prb-fm-4", text: "Handled ESP32-C3 strapping-pin constraints on the GPIO8/GPIO9 I2C bus; schematic and 3D board renders are generated from source with kicad-cli.", priority: 4, domainIds: ["pcb", "embedded"] },
       ],
     },
     {
@@ -257,24 +274,28 @@ export const seedData: AppData = {
     },
     {
       id: "prj-clock",
-      title: "WiFi NTP 7-Segment Clock",
-      domainIds: ["embedded"],
+      title: "Seven-Segment Smart Clock (Custom PCB)",
+      domainIds: ["pcb", "embedded"],
       sourceLink: "https://github.com/ItzzInfinity/clock-project",
-      tools: ["ESP32", "MAX7219", "SPI", "NTP"],
+      tools: ["KiCad", "ESP32-C3", "MAX7219", "DS1307", "ST7735", "DHT11"],
       bullets: [
-        { id: "prb-clock-1", text: "WiFi-synchronized digital clock pulling NTP time and updating MAX7219 7-segment displays over SPI in real time.", priority: 2, domainIds: ["embedded"] },
+        { id: "prb-clock-2", text: "Designed a 2-layer through-hole KiCad board carrying a MAX7219-driven seven-segment display, with the ESP32-C3, DS1307 RTC and ST7735 TFT as pluggable modules.", priority: 1, domainIds: ["pcb", "embedded"] },
+        { id: "prb-clock-1", text: "Wi-Fi clock combining battery-backed DS1307 timekeeping with NTP correction and a TFT dashboard for date, temperature and humidity.", priority: 2, domainIds: ["embedded", "pcb"] },
+        { id: "prb-clock-3", text: "Wrote non-blocking modular firmware - no delay() in the running system - with each peripheral behind a begin()/update() driver and settings persisted to NVS.", priority: 3, domainIds: ["embedded", "pcb"] },
+        { id: "prb-clock-4", text: "Kept PINOUT.md as the single wiring source of truth, mirrored one-for-one by Pinout.h and editable settings served from the clock itself.", priority: 4, domainIds: ["pcb", "embedded"] },
       ],
     },
     // --- Projects recovered from the old Embedded / PCB_Design resume variants ---
     {
       id: "prj-soundbox",
-      title: "Ultimate Pi Sound Box",
+      title: "Ultimate Pi Box (Raspberry Pi Media Player)",
       domainIds: ["embedded"],
-      sourceLink: "https://drive.google.com/drive/folders/16df-SWvkvvghtEMM3NwuqSKbPC6dCfM6?usp=sharing",
-      tools: ["Raspberry Pi Zero 2W", "Python", "OLED", "Rotary Encoder"],
+      sourceLink: "https://github.com/ItzzInfinity/ultimate-pi-box",
+      tools: ["Raspberry Pi Zero 2W", "Python", "MPD", "Flask", "OLED"],
       bullets: [
-        { id: "prb-sb-1", text: "Built a multifunctional sound box integrating internet radio, YouTube audio, and local playback on a Raspberry Pi Zero 2W.", priority: 2, domainIds: ["embedded"] },
-        { id: "prb-sb-2", text: "Designed a GPIO-based user interface with OLED display and rotary encoder for navigation.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-sb-1", text: "Built a multifunctional sound box integrating internet radio, YouTube audio, DLNA/UPnP streaming, Bluetooth and local playback on a Raspberry Pi Zero 2W.", priority: 2, domainIds: ["embedded"] },
+        { id: "prb-sb-2", text: "Designed a GPIO-based user interface with OLED display and rotary encoder for navigation, plus a Flask web interface on the local network.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-sb-3", text: "Rewrote it as a plug-in component architecture: each menu feature is a package over a shared config, hardware-abstraction and rendering runtime.", priority: 4, domainIds: ["embedded"] },
       ],
     },
     {
@@ -291,12 +312,48 @@ export const seedData: AppData = {
     },
     {
       id: "prj-framebuffer",
-      title: "ESP ST7735 Framebuffer Driver",
+      title: "ESP32-C3 Framebuffer Display Stack",
       domainIds: ["embedded"],
       sourceLink: "https://github.com/ItzzInfinity/ESP-FrameBuffer",
-      tools: ["ESP", "ST7735", "SPI", "C++"],
+      tools: ["ESP32-C3", "ST7735", "DHT11", "SD Card", "SPI"],
       bullets: [
-        { id: "prb-fb-1", text: "Framebuffer display driver for a 1.8\" ST7735 TFT on ESP, enabling smoother partial-screen updates.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-fb-1", text: "Framebuffer driver for a 128x160 ST7735 TFT, giving smoother partial-screen updates than direct draw calls.", priority: 2, domainIds: ["embedded"] },
+        { id: "prb-fb-2", text: "Grew into a modular task series on the same display core: Wi-Fi scan, NTP time, DHT11 sensing, SD-card logging and a dashboard UI.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-fb-3", text: "One codebase targets ESP32 and ESP32-C3 through compile-time guards, each task self-contained and documented.", priority: 4, domainIds: ["embedded"] },
+      ],
+    },
+    // --- Newer software repos; low priority so 1-page auto-fit trims them first ---
+    {
+      id: "prj-dayforge",
+      title: "DayForge - Cross-Platform Habit Tracker",
+      domainIds: ["embedded"],
+      sourceLink: "https://github.com/ItzzInfinity/DayForge",
+      tools: ["Flutter", "Dart", "Firebase", "Firestore", "Android", "Windows", "Linux"],
+      bullets: [
+        { id: "prb-df-1", text: "Shipped a recurring-task tracker for Android, Windows and Linux from one Flutter codebase, backed by Firebase Auth and Firestore with offline-first sync.", priority: 5, domainIds: ["embedded"] },
+        { id: "prb-df-2", text: "Implemented scheduled local notifications with per-task snooze and alarm-channel audio, plus streaks, a year-at-a-glance heatmap and JSON/CSV/Markdown export.", priority: 6, domainIds: ["embedded"] },
+      ],
+    },
+    {
+      id: "prj-audichop",
+      title: "AudioChop - Audio Splitting Tool",
+      domainIds: ["embedded"],
+      sourceLink: "https://github.com/ItzzInfinity/audichop",
+      tools: ["Python", "PyQt6", "ffmpeg", "ffprobe"],
+      bullets: [
+        { id: "prb-ac-1", text: "PyQt6 desktop app and CLI that slices MP3, WAV, M4A and FLAC files into fixed-duration segments, streaming through ffmpeg per segment instead of loading whole files into memory.", priority: 6, domainIds: ["embedded"] },
+        { id: "prb-ac-2", text: "Threaded batch processing with wildcard input, auto-padded segment naming and per-file error recovery so one bad file does not stop the run.", priority: 7, domainIds: ["embedded"] },
+      ],
+    },
+    {
+      id: "prj-ytaio",
+      title: "YT-AIO - Media Download Manager",
+      domainIds: ["embedded"],
+      sourceLink: "https://github.com/ItzzInfinity/yt-aio",
+      tools: ["Python", "PyQt6", "yt-dlp", "SQLite"],
+      bullets: [
+        { id: "prb-yt-1", text: "PyQt front end over yt-dlp that lists a channel or playlist as selectable metadata rows and downloads audio or video on worker threads, with a browser-cookie fallback for bot checks.", priority: 7, domainIds: ["embedded"] },
+        { id: "prb-yt-2", text: "Logs every operation to SQLite and resolves all runtime paths relative to the package, so the install is portable across machines.", priority: 8, domainIds: ["embedded"] },
       ],
     },
   ],
@@ -306,8 +363,8 @@ export const seedData: AppData = {
       name: "Advanced VLSI Design and Verification",
       issuer: "Maven Silicon Softech Pvt. Ltd.",
       date: "Jan 2025 - Dec 2026",
-      credentialLink: "",
-      domainIds: ["vlsi", "verification", "rtl", "fpga"],
+      credentialLink: "https://elearn.maven-silicon.com/verify/MS/WBRN-grades1210",
+      domainIds: ["vlsi", "verification", "rtl", "fpga","embedded", "pcb"],
     },
     // Udemy certifications recovered from the old Embedded / PCB_Design resumes.
     {
