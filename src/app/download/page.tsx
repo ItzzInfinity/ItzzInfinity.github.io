@@ -1,15 +1,25 @@
 "use client";
-import React, { useRef, useState, useMemo, useEffect, useLayoutEffect } from "react";
+import React, { useRef, useState, useMemo, useCallback, useEffect, useLayoutEffect } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
 import ResumePreview, { A4_PX_HEIGHT } from "@/components/resume/ResumePreview";
 import type { ResumeDocumentProps } from "@/components/resume/ResumeDocument";
 import type { DocumentProps } from "@react-pdf/renderer";
-import { filterByDomain } from "@/lib/filter";
+import { filterByDomain, filterBulletsByDomain } from "@/lib/filter";
 import { isOverflowing, removableItemIds, countPdfPages } from "@/lib/autofit";
-import { DEFAULT_SECTION_ORDER, SectionKey } from "@/lib/sections";
-import AdvancedPanel from "@/components/download/AdvancedPanel";
+import { DEFAULT_SECTION_ORDER, SECTION_LABELS, SectionKey } from "@/lib/sections";
+import {
+  ItemOrder,
+  ItemizedSection,
+  applyItemOrder,
+  isItemHideId,
+  visibleItems,
+} from "@/lib/visibility";
+import AdvancedPanel, { PanelSection } from "@/components/download/AdvancedPanel";
 
 type PageMode = "1" | "2";
+
+// Stable identity so `effectiveHidden` does not churn in 2-page mode.
+const EMPTY_HIDDEN: string[] = [];
 
 export default function DownloadPage() {
   const store = useResumeStore();
@@ -31,13 +41,18 @@ export default function DownloadPage() {
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([...DEFAULT_SECTION_ORDER]);
   const [manualMode, setManualMode] = useState(false);
   const [manualHidden, setManualHidden] = useState<string[]>([]);
+  // Runtime-only per-section entry order (Advanced panel drag handles).
+  const [itemOrder, setItemOrder] = useState<ItemOrder>({});
   const previewRef = useRef<HTMLDivElement>(null);
 
   const singlePage = pageMode === "1";
 
   // Hidden ids the preview/PDF actually use: the user's explicit selection in
   // manual mode, the auto-fit result in 1-page mode, nothing in 2-page mode.
-  const effectiveHidden = manualMode ? manualHidden : singlePage ? hiddenBulletIds : [];
+  const effectiveHidden = useMemo(
+    () => (manualMode ? manualHidden : singlePage ? hiddenBulletIds : EMPTY_HIDDEN),
+    [manualMode, manualHidden, singlePage, hiddenBulletIds]
+  );
 
   // Track the preview's rendered height so 2-page mode can draw a page break
   // at each A4 boundary instead of showing one long continuous sheet.
@@ -60,11 +75,17 @@ export default function DownloadPage() {
       );
 
   // Memoised so identities are stable across renders (prevents effect thrash).
-  const filteredSkills = useMemo(() => filterByDomain(store.skills, selectedDomain), [store.skills, selectedDomain]);
-  const filteredExperience = useMemo(() => filterByDomain(store.experience, selectedDomain), [store.experience, selectedDomain]);
-  const filteredProjects = useMemo(() => filterByDomain(store.projects, selectedDomain), [store.projects, selectedDomain]);
-  const filteredCerts = useMemo(() => filterByDomain(store.certifications, selectedDomain), [store.certifications, selectedDomain]);
-  const filteredAwards = useMemo(() => filterByDomain(store.awards, selectedDomain), [store.awards, selectedDomain]);
+  // Each list is domain-filtered, then put into the Advanced panel's runtime
+  // order (a no-op until the user drags something).
+  const filteredSkills = useMemo(() => applyItemOrder(filterByDomain(store.skills, selectedDomain), itemOrder.skills), [store.skills, selectedDomain, itemOrder.skills]);
+  const filteredExperience = useMemo(() => applyItemOrder(filterByDomain(store.experience, selectedDomain), itemOrder.experience), [store.experience, selectedDomain, itemOrder.experience]);
+  const filteredProjects = useMemo(() => applyItemOrder(filterByDomain(store.projects, selectedDomain), itemOrder.projects), [store.projects, selectedDomain, itemOrder.projects]);
+  const filteredCerts = useMemo(() => applyItemOrder(filterByDomain(store.certifications, selectedDomain), itemOrder.certifications), [store.certifications, selectedDomain, itemOrder.certifications]);
+  const filteredAwards = useMemo(() => applyItemOrder(filterByDomain(store.awards, selectedDomain), itemOrder.awards), [store.awards, selectedDomain, itemOrder.awards]);
+  const orderedEducation = useMemo(() => applyItemOrder(store.education, itemOrder.education), [store.education, itemOrder.education]);
+  const orderedLanguages = useMemo(() => applyItemOrder(store.languages, itemOrder.languages), [store.languages, itemOrder.languages]);
+  const orderedStrengths = useMemo(() => applyItemOrder(store.strengths, itemOrder.strengths), [store.strengths, itemOrder.strengths]);
+  const orderedHobbies = useMemo(() => applyItemOrder(store.hobbies, itemOrder.hobbies), [store.hobbies, itemOrder.hobbies]);
 
   // Per-domain title shown under the name; falls back to the profile title.
   const headerTitle = useMemo(() => {
@@ -94,13 +115,13 @@ export default function DownloadPage() {
       profile: store.profile,
       skills: filteredSkills,
       experience: filteredExperience,
-      education: store.education,
+      education: orderedEducation,
       projects: filteredProjects,
       certifications: filteredCerts,
       awards: filteredAwards,
-      languages: store.languages,
-      hobbies: store.hobbies,
-      strengths: store.strengths,
+      languages: orderedLanguages,
+      hobbies: orderedHobbies,
+      strengths: orderedStrengths,
       headerTitle,
       summaryText,
       sectionOrder,
@@ -111,17 +132,46 @@ export default function DownloadPage() {
       store.profile,
       filteredSkills,
       filteredExperience,
-      store.education,
+      orderedEducation,
       filteredProjects,
       filteredCerts,
       filteredAwards,
-      store.languages,
-      store.hobbies,
-      store.strengths,
+      orderedLanguages,
+      orderedHobbies,
+      orderedStrengths,
       headerTitle,
       summaryText,
       sectionOrder,
     ]
+  );
+
+  // Single place that turns a hidden-id list into a complete set of renderer
+  // props. Bullet ids and `section:` tokens are passed through for the
+  // renderers to interpret; `item:` tokens are applied HERE, by dropping whole
+  // entries from the arrays, so the preview and the PDF cannot disagree about
+  // which entries exist. Auto-fit never emits `item:` tokens, so this is an
+  // identity transform outside manual override.
+  const docPropsFor = useCallback(
+    (hidden: string[]): ResumeDocumentProps => {
+      if (!hidden.some(isItemHideId)) {
+        return { ...baseDocProps, hiddenBulletIds: hidden };
+      }
+      const set = new Set(hidden);
+      return {
+        ...baseDocProps,
+        skills: visibleItems(baseDocProps.skills, set),
+        experience: visibleItems(baseDocProps.experience, set),
+        education: visibleItems(baseDocProps.education, set),
+        projects: visibleItems(baseDocProps.projects, set),
+        certifications: visibleItems(baseDocProps.certifications, set),
+        awards: visibleItems(baseDocProps.awards, set),
+        languages: visibleItems(baseDocProps.languages, set),
+        hobbies: visibleItems(baseDocProps.hobbies, set),
+        strengths: visibleItems(baseDocProps.strengths ?? [], set),
+        hiddenBulletIds: hidden,
+      };
+    },
+    [baseDocProps]
   );
 
   // Manual selections reference the current domain's bullet ids, so a domain
@@ -129,6 +179,7 @@ export default function DownloadPage() {
   useEffect(() => {
     setManualMode(false);
     setManualHidden([]);
+    setItemOrder({});
   }, [selectedDomain]);
 
   // Restart the fit pass whenever the resume content, section order or page
@@ -139,7 +190,7 @@ export default function DownloadPage() {
     setHiddenBulletIds([]);
     setOverflowed(false);
     setFitting(singlePage);
-  }, [selectedDomain, customText, removableOrder, singlePage, sectionOrder, manualMode]);
+  }, [selectedDomain, customText, removableOrder, singlePage, sectionOrder, itemOrder, manualMode]);
 
   // Convergent auto-fit (single-page only): remove one lowest-priority bullet
   // per render until the preview fits one A4 page, or nothing is left to trim.
@@ -183,10 +234,10 @@ export default function DownloadPage() {
         let fits = false;
         for (;;) {
           if (cancelled) return;
-          const element = React.createElement(mod.default, {
-            ...baseDocProps,
-            hiddenBulletIds: hidden,
-          }) as React.ReactElement<DocumentProps>;
+          const element = React.createElement(
+            mod.default,
+            docPropsFor(hidden)
+          ) as React.ReactElement<DocumentProps>;
           const blob = await pdf(element).toBlob();
           const bytes = new Uint8Array(await blob.arrayBuffer());
           if (countPdfPages(bytes) <= 1) {
@@ -207,7 +258,7 @@ export default function DownloadPage() {
     return () => {
       cancelled = true;
     };
-  }, [fitting, singlePage, manualMode, removableOrder, baseDocProps]);
+  }, [fitting, singlePage, manualMode, removableOrder, docPropsFor]);
 
   // Manual override: never trim, but still render the real PDF once per
   // change to warn (not fix) when the explicit selection exceeds one page.
@@ -221,10 +272,10 @@ export default function DownloadPage() {
           import("@react-pdf/renderer"),
           import("@/components/resume/ResumeDocument"),
         ]);
-        const element = React.createElement(mod.default, {
-          ...baseDocProps,
-          hiddenBulletIds: manualHidden,
-        }) as React.ReactElement<DocumentProps>;
+        const element = React.createElement(
+          mod.default,
+          docPropsFor(manualHidden)
+        ) as React.ReactElement<DocumentProps>;
         const blob = await pdf(element).toBlob();
         const bytes = new Uint8Array(await blob.arrayBuffer());
         if (!cancelled) setOverflowed(countPdfPages(bytes) > 1);
@@ -235,7 +286,64 @@ export default function DownloadPage() {
     return () => {
       cancelled = true;
     };
-  }, [manualMode, singlePage, manualHidden, baseDocProps]);
+  }, [manualMode, singlePage, manualHidden, docPropsFor]);
+
+  // What the Advanced panel's content picker shows: every section with its
+  // entries, in the order they will actually render. Built from the same
+  // domain-filtered lists the resume uses, and NOT filtered by manualHidden —
+  // a hidden entry must stay in the list so it can be ticked back on.
+  const panelSections = useMemo<PanelSection[]>(() => {
+    const bulletsFor = (bullets: { id: string; text: string; priority: number; domainIds: string[] }[]) =>
+      filterBulletsByDomain(bullets, selectedDomain).map((b) => ({ id: b.id, text: b.text }));
+    const plain = <T extends { id: string }>(items: T[], label: (i: T) => string) =>
+      items.map((i) => ({ id: i.id, label: label(i), bullets: [] }));
+
+    const byKey: Record<SectionKey, PanelSection["items"]> = {
+      summary: [],
+      experience: filteredExperience.map((e) => ({
+        id: e.id,
+        label: `${e.role}${e.company ? `, ${e.company}` : ""}`,
+        bullets: bulletsFor(e.bullets),
+      })),
+      education: plain(orderedEducation, (e) => `${e.degree}${e.institute ? ` - ${e.institute}` : ""}`),
+      skills: plain(filteredSkills, (s) => `${s.category}: ${s.name}`),
+      projects: filteredProjects.map((p) => ({
+        id: p.id,
+        label: p.title,
+        bullets: bulletsFor(p.bullets),
+      })),
+      certifications: plain(filteredCerts, (c) => `${c.name}${c.issuer ? ` - ${c.issuer}` : ""}`),
+      awards: plain(filteredAwards, (a) => `${a.title}${a.organization ? ` - ${a.organization}` : ""}`),
+      languages: plain(orderedLanguages, (l) => `${l.name} (${l.proficiency})`),
+      strengths: plain(orderedStrengths, (x) => x.name),
+      hobbies: plain(orderedHobbies, (h) => h.name),
+    };
+
+    return DEFAULT_SECTION_ORDER.map((key) => ({
+      key,
+      label: SECTION_LABELS[key],
+      items: byKey[key],
+    }));
+  }, [
+    selectedDomain,
+    filteredExperience,
+    filteredProjects,
+    filteredSkills,
+    filteredCerts,
+    filteredAwards,
+    orderedEducation,
+    orderedLanguages,
+    orderedStrengths,
+    orderedHobbies,
+  ]);
+
+  function handleItemOrderChange(section: ItemizedSection, ids: string[]) {
+    setItemOrder((prev) => ({ ...prev, [section]: ids }));
+  }
+
+  const previewProps = useMemo(() => docPropsFor(effectiveHidden), [docPropsFor, effectiveHidden]);
+  const previewHiddenSet = useMemo(() => new Set(effectiveHidden), [effectiveHidden]);
+  const manualHiddenSet = useMemo(() => new Set(manualHidden), [manualHidden]);
 
   function handleManualModeChange(on: boolean) {
     setManualMode(on);
@@ -267,13 +375,12 @@ export default function DownloadPage() {
         import("@react-pdf/renderer"),
         import("@/components/resume/ResumeDocument"),
       ]);
-      const props: ResumeDocumentProps = {
-        ...baseDocProps,
-        // Manual override wins; otherwise 1-page mode uses the auto-fit trim
-        // and 2-page mode trims nothing (react-pdf paginates automatically).
-        hiddenBulletIds: effectiveHidden,
-      };
-      const element = React.createElement(mod.default, props) as React.ReactElement<DocumentProps>;
+      // Manual override wins; otherwise 1-page mode uses the auto-fit trim
+      // and 2-page mode trims nothing (react-pdf paginates automatically).
+      const element = React.createElement(
+        mod.default,
+        docPropsFor(effectiveHidden)
+      ) as React.ReactElement<DocumentProps>;
       const blob = await pdf(element).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -381,11 +488,10 @@ export default function DownloadPage() {
                   onSectionOrderChange={setSectionOrder}
                   manualMode={manualMode}
                   onManualModeChange={handleManualModeChange}
-                  manualHidden={new Set(manualHidden)}
+                  manualHidden={manualHiddenSet}
                   onToggleHidden={handleToggleHidden}
-                  domainId={selectedDomain}
-                  experience={filteredExperience}
-                  projects={filteredProjects}
+                  sections={panelSections}
+                  onItemOrderChange={handleItemOrderChange}
                 />
               </div>
             )}
@@ -447,25 +553,13 @@ export default function DownloadPage() {
         {/* Resume Preview */}
         <div className="flex-1 overflow-auto">
           <div style={{ transform: "scale(0.85)", transformOrigin: "top left", position: "relative" }}>
+            {/* Built from the same props object the PDF is rendered from, so
+                the preview cannot silently disagree with the download. */}
             <ResumePreview
               ref={previewRef}
-              domainId={selectedDomain}
-              customText={customText}
-              profile={store.profile}
-              skills={filteredSkills}
-              experience={filteredExperience}
-              education={store.education}
-              projects={filteredProjects}
-              certifications={filteredCerts}
-              awards={filteredAwards}
-              languages={store.languages}
-              hobbies={store.hobbies}
-              strengths={store.strengths}
-              headerTitle={headerTitle}
-              summaryText={summaryText}
+              {...previewProps}
+              hiddenBulletIds={previewHiddenSet}
               singlePage={singlePage}
-              hiddenBulletIds={new Set(effectiveHidden)}
-              sectionOrder={sectionOrder}
             />
             {/* Page-break guides for the 2-page layout */}
             {pageBreaks.map((top, i) => (

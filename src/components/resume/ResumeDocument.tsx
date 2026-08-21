@@ -340,7 +340,16 @@ export default function ResumeDocument(props: ResumeDocumentProps) {
           {certifications.map((c) => (
             <View key={c.id} style={styles.rowBetween}>
               <Text style={styles.rowLeft}>
-                <Text style={styles.bold}>{c.name}</Text>
+                {c.credentialLink ? (
+                  <Link
+                    style={[styles.bold, styles.link]}
+                    src={normalizeUrl(c.credentialLink)}
+                  >
+                    {c.name}
+                  </Link>
+                ) : (
+                  <Text style={styles.bold}>{c.name}</Text>
+                )}
                 {c.issuer ? `  ${c.issuer}` : ""}
               </Text>
               <Text style={[styles.muted, styles.rowRight]}>{c.date}</Text>

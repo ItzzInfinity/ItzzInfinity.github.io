@@ -30,7 +30,7 @@ One-table view of everything planned in this document and where it stands. Statu
 | 22 | Improvement | ATS-friendly PDF metadata + domain keyword check | 🔲 To do | Improvement #4 |
 | 23 | Improvement | Trim preview with pin ("never trim this") controls on Download page | 🔶 Partial | Improvement #5; the Advanced manual override covers "see & control what's trimmed", but pinning *within* auto-fit is still open |
 | 24 | Improvement | Per-project date ranges, right-aligned like experience | 🔲 To do | Improvement #6 |
-| 25 | Improvement | Section reorder from Preview page + Advanced manual override on Download page | ✅ Done | Improvement #7; Advanced panel: drag-reorder sections, per-section/per-bullet checkboxes that override auto-fit at runtime |
+| 25 | Improvement | Section reorder from Preview page + Advanced manual override on Download page | ✅ Done | Improvement #7; Advanced panel: drag-reorder sections, plus a collapsible picker with section / entry / bullet checkboxes and drag-reorder of entries (projects included) that override auto-fit at runtime |
 | 26 | Improvement | Custom domains end-to-end (dynamic portfolio routes from the store) | 🔲 To do | Improvement #8 |
 | 27 | Improvement | Resume version history (last N generated PDFs in IndexedDB) | 🔲 To do | Improvement #9 |
 | 28 | Improvement | Lighthouse/mobile pass (preview fit-width, tap targets) | 🔲 To do | Improvement #10 |
@@ -39,7 +39,8 @@ One-table view of everything planned in this document and where it stands. Statu
 | 31 | Future | Analytics for downloaded resume versions | 💡 Planned | Phase 9 |
 | 32 | Future | AI-assisted summary & bullet rewriting | 💡 Planned | Phase 9 |
 | 33 | Future | Theme customization for portfolio and resume | 💡 Planned | Phase 9 |
-| 34 | Future | Per-section public/private visibility controls | 🔶 Partial | Settings/Download hidden; per-section controls not built |
+| 34 | Future | Per-section public/private visibility controls | 🔶 Partial | Settings/Download hidden; the Download page's Advanced override now gives per-section/per-entry control **for one download**, but nothing persists to the store or affects the public portfolio pages |
+| 35 | Resume | Certificate credential links clickable on the resume | ✅ Done | Both renderers hyperlink the certificate name from `credentialLink` |
 
 # Thinking out Loud -  Will organize later
 1. Need a way to generate resume as PDF on the go.
@@ -84,7 +85,38 @@ One-table view of everything planned in this document and where it stands. Statu
 16. Downloadable resume should have a `Download` button. and a set of radio buttons to select the domain. And a section If I want to add a new line or custom text in the resume. 
 
    
-# Structured Goal 
+# Structured Goal
+
+## Current state — 2026-08-21 (session 1) — download-page content picker + credential links
+
+- **Current phase:** Improvements / backlog batches (Phase 7 shipped; working `## What I need` one `---` batch at a time)
+- **Last completed task:** The 4-item batch at the bottom of `## What I need` — credential links + the Download page's Advanced content picker
+- **Next task:** Nothing pending from the user. The oldest open roadmap rows are #20 (References section + footer, FSD rule 8) and #22 (ATS-friendly PDF metadata + domain keyword check); #23 (pinning *within* auto-fit) is the natural follow-on to this session's picker.
+
+### Session summary
+1. Refreshed `src/lib/seed.ts` from github.com/ItzzInfinity: rewrote FM Radio, clock-project, ESP-FrameBuffer and Ultimate Pi Box (the first two now ship real KiCad boards, so both moved to `pcb`), added TangNano-9K-projects / DayForge / AudioChop / YT-AIO, and added Yosys/nextpnr + Icarus Verilog skills.
+2. Made certificate `credentialLink`s clickable in both renderers — they were in the data model and seed all along but neither renderer emitted them.
+3. Added `src/lib/visibility.ts`: `item:<id>` hide tokens plus `applyItemOrder`, and routed every render site (verify pass, download handler, preview) through one `docPropsFor()` in the Download page.
+4. Rebuilt `AdvancedPanel` as a two-level accordion — section / entry / bullet checkboxes for all ten sections, plus drag-reorder of entries (projects included) that feeds the resume.
+5. Wired `@testing-library/jest-dom` into jest for the first time; added 8 component tests + 10 unit tests (29 total, all passing).
+
+**Gotchas learned this session:**
+- **Adding resume content is not free even at low priority.** A project's title + tools line is *not trimmable*, so richer entries raise the page's fixed cost regardless of bullet priority. Fleshing out the PCB projects pushed the pcb one-pager from 10/24 items trimmed to 24/32 — auto-fit removed *every* project bullet and shipped bare titles. Fixed by shortening titles/tool lists, dropping `pcb` from the firmware-only ESP-FrameBuffer, and demoting the breadboard-only SpO2/SigGen bullets to priority 2 so the two custom-board bullets are the only priority-1 project content the page must keep. **When adding seed content, re-run `self-check` and read the trim ratio, not just the pass/fail.**
+- **`@testing-library/jest-dom` was a dependency but had never been wired in**, so *any* component test failed with `toBeChecked is not a function`. It needs two files, not one: `jest.setup.js` (`setupFilesAfterEnv`, for the runtime matchers) *and* `jest-dom.d.ts` (for `tsc --noEmit`, which otherwise errors on the matcher types even though jest passes).
+- Entry hiding is applied **upstream** of the renderers on purpose (`visibleItems` in `docPropsFor`), not inside them. Any filtering rule written twice is a rule the preview and the PDF will eventually disagree about — that is the recurring failure mode in this repo.
+- The section-order sortable list is kept separate from the accordion to avoid nesting one `DndContext` inside another.
+
+### Partially done
+- none
+
+### Blocked
+- none
+
+### Next step (exact)
+No user batch is open — wait for the next `---` block in `## What I need`. If picking up work unprompted, start roadmap row #20: neither renderer outputs a References section, so add a `references` entry to the `SectionKey` map in `src/lib/sections.ts` and a matching `render()` branch in **both** `ResumeDocument.tsx` and `ResumePreview.tsx`, then re-run `npx tsx scripts/self-check.tsx`.
+
+### Assumptions
+- The four new low-priority software repos (DayForge, AudioChop, YT-AIO) belong under `embedded` because it is the only non-hardware-specific domain; say so if they should be dropped from the resume entirely.
 
 ## Project Vision
 
@@ -343,8 +375,8 @@ Concrete next steps that would make the product meaningfully better, roughly in 
   ---
   - Repos on github.com/ItzzInfinity have been updated — find the new and updated ones, summarize them, and fold them into `src/lib/seed.ts` (mostly PCB Design and Embedded). - **Done** (pulled all 25 repos from the GitHub API and read the READMEs/file trees of every original one. Four existing seed projects were rewritten and four new repos added; skills gained Yosys/nextpnr and Icarus Verilog/GTKWave. The two headline changes are that **FM Radio** and **clock-project** now ship full KiCad 9 hardware — real custom boards, not breadboards — so both moved to `pcb` as their primary domain. Gotcha found while doing it: adding content is not free even at low priority, because a project's title + tools line is *not trimmable* — the first pass grew the pcb resume's fixed header cost enough that auto-fit trimmed every project bullet, leaving bare titles. Fixed by shortening titles/tool lists, dropping `pcb` from the firmware-only ESP-FrameBuffer, and demoting the breadboard-only SpO2/SigGen bullets to priority 2 so the two custom-board bullets are the only priority-1 project content the pcb page must keep. `npx tsx scripts/self-check.tsx` passes for all 6 domains. Not committed or pushed, as requested.)
 ---
-- Certificate credential links are not working in resume
+- Certificate credential links are not working in resume - **Fixed** (root cause: `credentialLink` existed in `types/index.ts` and was populated in `seed.ts`, but *neither* renderer ever emitted it — the certifications block rendered name/issuer/date as plain text. Both renderers now hyperlink the certificate name when it has a credential link, styled like the header links (bold, link colour, no underline) so nothing shifts. Verified with PyMuPDF: all three certificate URIs are live in the generated PDF.)
 - In *./download* page only the experience and projects have check boxes 
-  - like if I want to Uncheck the entire project - this is not possible in current scenario
-- I want to check other pointers too 
-- modification `Drag-and-drop reordering in Settings (Phase 4.2)` in download after override option add dropdown for each section and project details as the entire detailed portfolio is becoming very long and I want to check/uncheck the entire section or project details instead of checking each pointer, and add drag functionality for each section including projects too after override option.  
+  - like if I want to Uncheck the entire project - this is not possible in current scenario - **Done** (every entry now has its own checkbox that hides the whole entry, projects included. Added a third hide grain, `item:<id>`, alongside the existing bullet ids and `section:<key>` tokens — see `src/lib/visibility.ts`.)
+- I want to check other pointers too  - **Done** (the picker covers all ten sections, not just experience and projects: education, skills, certifications, achievements, languages, strengths and hobbies all list their entries with checkboxes.)
+- modification `Drag-and-drop reordering in Settings (Phase 4.2)` in download after override option add dropdown for each section and project details as the entire detailed portfolio is becoming very long and I want to check/uncheck the entire section or project details instead of checking each pointer, and add drag functionality for each section including projects too after override option. - **Done** (the override area is now a two-level accordion: every section collapses to one row showing a `shown/total` count, opens to its entries, and an entry with bullets opens one level further. So you can untick a section, an entry, or a bullet without scrolling past the ones you don't care about. Entries inside every section are drag-reorderable and that order feeds the resume itself — project order included — via a runtime `itemOrder` map. Two design notes worth keeping: (1) `item:` tokens are applied *upstream* in the Download page by `visibleItems`, not inside the renderers, because the preview and the PDF have drifted before whenever a filtering rule had to be written twice; the renderers never learn about entry hiding at all. (2) The section-order list is deliberately left as a separate sortable list rather than making the accordion rows themselves draggable — that would have nested one DndContext inside another. `applyItemOrder` also keeps ids missing from a stale order rather than dropping them, so reordering can never silently delete content. 8 component tests in `src/components/download/__tests__/AdvancedPanel.test.tsx` and 10 unit tests in `src/lib/__tests__/visibility.test.ts` cover it; `@testing-library/jest-dom` was already a dependency but had never been wired into `jest.config.js`, so this batch added `jest.setup.js` + `jest-dom.d.ts` to make component tests possible at all.)  

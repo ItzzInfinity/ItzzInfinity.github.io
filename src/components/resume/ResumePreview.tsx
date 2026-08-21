@@ -249,7 +249,14 @@ const ResumePreview = forwardRef<HTMLDivElement, Props>(function ResumePreview(
               key={c.id}
               left={
                 <span>
-                  <span style={{ fontWeight: 700 }}>{c.name}</span>
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      color: c.credentialLink ? LINK : undefined,
+                    }}
+                  >
+                    {c.name}
+                  </span>
                   {c.issuer ? `  ${c.issuer}` : ""}
                 </span>
               }
