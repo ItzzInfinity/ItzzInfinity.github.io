@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
+import { inheritBulletDomains } from "@/lib/filter";
 import { Experience, ExperienceBullet } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 import SortableList from "./SortableList";
@@ -24,7 +25,7 @@ export default function ExperienceManager() {
 
   function addBullet() {
     if (!bulletText.trim()) return;
-    const b: ExperienceBullet = { id: uuidv4(), text: bulletText.trim(), priority: form.bullets.length + 1, domainIds: form.domainIds };
+    const b: ExperienceBullet = { id: uuidv4(), text: bulletText.trim(), priority: form.bullets.length + 1, domainIds: [] };
     setForm((f) => ({ ...f, bullets: [...f.bullets, b] }));
     setBulletText("");
   }
@@ -35,7 +36,8 @@ export default function ExperienceManager() {
 
   function save() {
     if (!form.company.trim()) return;
-    if (editId) { updateExperience(editId, form); setEditId(null); } else { addExperience(form); }
+    const entry = { ...form, bullets: inheritBulletDomains(form.bullets, form.domainIds) };
+    if (editId) { updateExperience(editId, entry); setEditId(null); } else { addExperience(entry); }
     setForm(blankExp());
   }
 

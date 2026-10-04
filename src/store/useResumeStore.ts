@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { AppData, Domain, Skill, Experience, Education, Project, Certification, Award, Language, Hobby, Reference, Profile } from "@/types";
-import { loadData, saveData } from "@/lib/storage";
+import { loadData, saveData, subscribeToExternalChanges } from "@/lib/storage";
 import { v4 as uuidv4 } from "uuid";
 
 interface ResumeStore extends AppData {
@@ -288,3 +288,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => ({
       return next;
     }),
 }));
+
+// Live cross-tab sync: adopt edits another tab persisted. Plain setState (not an
+// action) so nothing is written back — echoing would ping-pong between tabs.
+subscribeToExternalChanges((data) => useResumeStore.setState(data));

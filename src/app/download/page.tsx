@@ -183,14 +183,17 @@ export default function DownloadPage() {
   }, [selectedDomain]);
 
   // Restart the fit pass whenever the resume content, section order or page
-  // mode changes. Auto-fit only runs in single-page mode (2-page mode lets
+  // mode changes. `baseDocProps` covers every rendered field (skills, profile,
+  // certs…), not just the trimmable bullets — edits now arrive live from a
+  // Settings tab, and without it a shorter skills list would keep its old,
+  // over-trimmed bullet set (the verify pass only ever extends the prefix). Auto-fit only runs in single-page mode (2-page mode lets
   // content flow) and is suspended entirely while manual override is active.
   useEffect(() => {
     if (manualMode) return;
     setHiddenBulletIds([]);
     setOverflowed(false);
     setFitting(singlePage);
-  }, [selectedDomain, customText, removableOrder, singlePage, sectionOrder, itemOrder, manualMode]);
+  }, [baseDocProps, selectedDomain, customText, removableOrder, singlePage, sectionOrder, itemOrder, manualMode]);
 
   // Convergent auto-fit (single-page only): remove one lowest-priority bullet
   // per render until the preview fits one A4 page, or nothing is left to trim.

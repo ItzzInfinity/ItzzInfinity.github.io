@@ -17,3 +17,15 @@ export function filterBulletsByDomain<T extends { domainIds: string[] }>(
       return pa - pb;
     });
 }
+
+// A bullet with no domains of its own inherits its parent entry's. The Settings
+// forms add bullets as `domainIds: []` and resolve them on save, so the order
+// you click things in doesn't matter — stamping the parent's domains at
+// "add bullet" time silently dropped every bullet typed before a domain chip
+// was picked (it was saved with `[]` and filtered out of every resume).
+export function inheritBulletDomains<T extends { domainIds: string[] }>(
+  bullets: T[],
+  parentDomainIds: string[]
+): T[] {
+  return bullets.map((b) => (b.domainIds.length ? b : { ...b, domainIds: [...parentDomainIds] }));
+}

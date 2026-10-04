@@ -87,7 +87,36 @@ One-table view of everything planned in this document and where it stands. Statu
    
 # Structured Goal
 
-## Current state — 2026-08-21 (session 1) — download-page content picker + credential links
+## Current state — 2026-10-04 (session 2) — live cross-tab sync + ATS-quantified project bullets
+
+- **Current phase:** Improvements / backlog batches (working `## What I need` one `---` batch at a time)
+- **Last completed task:** The cross-tab sync + ATS bullet batch at the bottom of `## What I need`
+- **Next task:** Waiting on the user — real metrics for the APB-UART VIP / Router 1x3 bullets, or the next `---` batch.
+
+### Session summary
+1. Live cross-tab sync: `subscribeToExternalChanges` + `parseStored` in `src/lib/storage.ts`, wired with a write-free `setState` at the bottom of `useResumeStore.ts`; 4 tests in `src/lib/__tests__/storage.test.ts`.
+2. Download page auto-fit reset effect now keys on `baseDocProps`, so a non-bullet edit (skills/profile/certs) re-runs the fit from scratch instead of keeping a stale trim set.
+3. 34 project bullets in `seed.ts` rewritten verb-first with repo-verified numbers; self-check trim counts unchanged for all 6 domains; tsc, lint, 33 jest tests pass. Not committed.
+
+**Gotchas learned this session:**
+- The PDF verify pass only ever *extends* `hiddenBulletIds`; any content change it doesn't restart from (i.e. one missing from the reset effect's deps) leaves the resume over-trimmed, never under-trimmed — so the bug is silent.
+- The browser never fires `storage` in the writing tab, so applying the event with a store *action* (which persists) would still be safe locally but would bounce between two listening tabs — use plain `setState`.
+- Settings forms stamped the entry's domains onto a bullet at add-bullet time, so bullets typed before picking a domain chip were invisible everywhere. Bullets now inherit on save (`inheritBulletDomains`), and `parseStored` repairs old caches.
+- Seed text drifted from the repos: "arbiters" in 100 Days of RTL and "60 projects" for Tang Nano (1 built). Check claims against the GitHub tree before quantifying anything.
+
+### Partially done
+- APB-UART VIP and Router 1x3 bullets are still label-only; need real coverage/test-count figures from the user.
+
+### Blocked
+- none
+
+### Next step (exact)
+Ask the user for functional-coverage %, test/sequence counts and bugs found for the APB-UART VIP and Router 1x3 projects, then add one quantified descriptive bullet to each in `src/lib/seed.ts` (priority 3) and run `npx tsx scripts/self-check.tsx`.
+
+### Assumptions
+- none
+
+## Previous state — 2026-08-21 (session 1) — download-page content picker + credential links
 
 - **Current phase:** Improvements / backlog batches (Phase 7 shipped; working `## What I need` one `---` batch at a time)
 - **Last completed task:** The 4-item batch at the bottom of `## What I need` — credential links + the Download page's Advanced content picker
@@ -380,3 +409,6 @@ Concrete next steps that would make the product meaningfully better, roughly in 
   - like if I want to Uncheck the entire project - this is not possible in current scenario - **Done** (every entry now has its own checkbox that hides the whole entry, projects included. Added a third hide grain, `item:<id>`, alongside the existing bullet ids and `section:<key>` tokens — see `src/lib/visibility.ts`.)
 - I want to check other pointers too  - **Done** (the picker covers all ten sections, not just experience and projects: education, skills, certifications, achievements, languages, strengths and hobbies all list their entries with checkboxes.)
 - modification `Drag-and-drop reordering in Settings (Phase 4.2)` in download after override option add dropdown for each section and project details as the entire detailed portfolio is becoming very long and I want to check/uncheck the entire section or project details instead of checking each pointer, and add drag functionality for each section including projects too after override option. - **Done** (the override area is now a two-level accordion: every section collapses to one row showing a `shown/total` count, opens to its entries, and an entry with bullets opens one level further. So you can untick a section, an entry, or a bullet without scrolling past the ones you don't care about. Entries inside every section are drag-reorderable and that order feeds the resume itself — project order included — via a runtime `itemOrder` map. Two design notes worth keeping: (1) `item:` tokens are applied *upstream* in the Download page by `visibleItems`, not inside the renderers, because the preview and the PDF have drifted before whenever a filtering rule had to be written twice; the renderers never learn about entry hiding at all. (2) The section-order list is deliberately left as a separate sortable list rather than making the accordion rows themselves draggable — that would have nested one DndContext inside another. `applyItemOrder` also keeps ids missing from a stale order rather than dropping them, so reordering can never silently delete content. 8 component tests in `src/components/download/__tests__/AdvancedPanel.test.tsx` and 10 unit tests in `src/lib/__tests__/visibility.test.ts` cover it; `@testing-library/jest-dom` was already a dependency but had never been wired into `jest.config.js`, so this batch added `jest.setup.js` + `jest-dom.d.ts` to make component tests possible at all.)  
+- When The site is loaded in the browser, I am opening a tab for `settings` and another for `download` 
+  - when I am making changes in settings or adding projects / points - I want them to be showed up in another tab - update then and there - **Done** (root cause: each tab loaded `localStorage` once, at module init, and never listened again, so a write in `/settings` only reached `/download` on reload. `src/lib/storage.ts` now exports `subscribeToExternalChanges`, a `storage`-event listener that re-parses the cache through the same seed-signature rule as a fresh load (`parseStored`), and the store applies it with a plain `setState` — deliberately not an action, so the receiving tab never writes back and the two tabs can't ping-pong. A reset in one tab (key removed) re-seeds the others. Second fix found while doing it: the Download page restarted auto-fit only when projects/experience changed, so a live skills/profile/cert edit kept the old trim set — and since the PDF verify pass only ever *extends* the hidden prefix, a shorter resume stayed over-trimmed. The reset effect now also keys on `baseDocProps`. 4 tests in `src/lib/__tests__/storage.test.ts`.) **Reopened** (user: added content in Settings, nothing in the Download tab even after a refresh. A headless-Chrome repro showed the sync itself working; the real bug was upstream in the Settings forms — `ProjectsManager`/`ExperienceManager` stamped `form.domainIds` onto a bullet at *add-bullet* time, so any point typed before picking a domain chip was saved with `domainIds: []` and filtered out of every resume: the project title appeared, its points never did.) **Fixed** (new bullets are added with `[]` = inherit, and `inheritBulletDomains` in `src/lib/filter.ts` resolves them to the entry's domains on save; `parseStored` applies the same repair on load so points already saved broken reappear without re-editing. Verified end-to-end in headless Chrome: settings tab add → download tab shows the point live. Known follow-up: `/download` logs hydration-mismatch errors because the store loads `localStorage` at module init while the static HTML was rendered from seed — React recovers by client-rendering, so it's noise not data loss, but it should become a post-mount hydrate.)
+  - in `src/lib/seed.ts` The description for projects are too detail oriented - add more points towards quantifyng them for *ATS resume checkers* - **Done** (rewrote 34 project bullets as verb-first statements with a number up front, using only figures verified against each repo on GitHub — e.g. 100 designs in 100 days / 600+ Verilog files / ~200 testbenches, a 2-layer 47 x 28 mm board with 2 alternate MCUs, 2 displays on one SPI bus at 8/24 MHz, a settings page added for ~3% flash (78% → 81% of 1.25 MB), 15 stores, 3 platforms, 4 audio formats. Ids, priorities and domain mappings are unchanged, and the self-check trims exactly the same number of items per domain as before (all 6 pass). Two corrections made on the way: the 100-days bullet listed "arbiters" — the repo has none, so it now names FIFOs, cache memory and UART; and the Tang Nano bullet read as 60 finished projects when the repo has 1 built plus the 60-project plan, so it now says "planned … and brought up the first build". **Partially covered:** the APB-UART VIP and Router 1x3 course projects have no repo and only label bullets (`HDL: Verilog`…); quantifying them needs real figures from you — functional coverage %, number of test cases/sequences, bugs found — rather than invented ones.)

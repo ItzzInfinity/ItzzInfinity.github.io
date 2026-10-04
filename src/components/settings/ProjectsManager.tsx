@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useResumeStore } from "@/store/useResumeStore";
+import { inheritBulletDomains } from "@/lib/filter";
 import { Project, ProjectBullet } from "@/types";
 import { v4 as uuidv4 } from "uuid";
 import SortableList from "./SortableList";
@@ -22,7 +23,7 @@ export default function ProjectsManager() {
 
   function addBullet() {
     if (!bulletText.trim()) return;
-    const b: ProjectBullet = { id: uuidv4(), text: bulletText.trim(), priority: form.bullets.length + 1, domainIds: form.domainIds };
+    const b: ProjectBullet = { id: uuidv4(), text: bulletText.trim(), priority: form.bullets.length + 1, domainIds: [] };
     setForm((f) => ({ ...f, bullets: [...f.bullets, b] }));
     setBulletText("");
   }
@@ -35,7 +36,8 @@ export default function ProjectsManager() {
 
   function save() {
     if (!form.title.trim()) return;
-    if (editId) { updateProject(editId, form); setEditId(null); } else { addProject(form); }
+    const entry = { ...form, bullets: inheritBulletDomains(form.bullets, form.domainIds) };
+    if (editId) { updateProject(editId, entry); setEditId(null); } else { addProject(entry); }
     setForm(blankProj());
   }
 

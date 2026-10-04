@@ -189,8 +189,8 @@ export const seedData: AppData = {
         { id: "prb-alu-3", text: "Protocols: UART", priority: 2, domainIds: ["fpga", "embedded", "vlsi"] },
         { id: "prb-alu-4", text: "EDA Tools: ModelSim, Xilinx Vivado, Arduino IDE", priority: 2, domainIds: ["fpga", "embedded", "vlsi"] },
         // Descriptive fillers from the CV / PCB_Design resume variants.
-        { id: "prb-alu-5", text: "Developed an 8-bit ALU in Verilog with UART serial input; computation results shown on a 1602 LCD and verified on an FPGA board.", priority: 3, domainIds: ["fpga", "embedded", "vlsi"] },
-        { id: "prb-alu-6", text: "Integrated an ESP32 with the FPGA for seamless serial communication.", priority: 4, domainIds: ["fpga", "embedded", "vlsi"] },
+        { id: "prb-alu-5", text: "Designed an 8-bit Verilog ALU driven over UART and validated it on FPGA hardware, with results shown on a 16x2 (1602) LCD.", priority: 3, domainIds: ["fpga", "embedded", "vlsi"] },
+        { id: "prb-alu-6", text: "Bridged an ESP32 MCU and the FPGA over a 2-wire UART link to send operands and read back results.", priority: 4, domainIds: ["fpga", "embedded", "vlsi"] },
       ],
     },
     // --- Projects sourced from github.com/ItzzInfinity (original, non-fork repos) ---
@@ -201,7 +201,7 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/100-days-of-RTL",
       tools: ["Verilog", "ModelSim", "Vivado", "Quartus Prime", "Gowin EDA"],
       bullets: [
-        { id: "prb-100rtl-1", text: "Designed and verified a new RTL block every day for 100 days straight — counters, FSMs, arbiters, and protocol blocks with self-checking testbenches.", priority: 1, domainIds: ["vlsi", "rtl", "verification", "fpga"] },
+        { id: "prb-100rtl-1", text: "Designed and verified 100 RTL designs in 100 consecutive days (600+ Verilog files, ~200 testbenches) - counters, FSMs, FIFOs, cache memory and UART - each a ready-to-open Vivado project.", priority: 1, domainIds: ["vlsi", "rtl", "verification", "fpga"] },
       ],
     },
     {
@@ -221,9 +221,9 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/TangNano-9K-projects",
       tools: ["Verilog", "Gowin GW1NR-9", "Yosys", "nextpnr", "Icarus Verilog"],
       bullets: [
-        { id: "prb-tang-1", text: "Progressive 60-project curriculum on the Tang Nano 9K (GW1NR-9): clock division, UART/SPI/I2C masters, DDS generation, PSRAM framebuffers and VGA/HDMI video timing.", priority: 1, domainIds: ["fpga", "vlsi", "rtl"] },
-        { id: "prb-tang-2", text: "Built on a fully open-source flow - Icarus Verilog and GTKWave, Yosys synthesis, nextpnr place-and-route, Apicula bitstream packing - driven by a per-project Makefile.", priority: 2, domainIds: ["fpga", "vlsi", "rtl"] },
-        { id: "prb-tang-3", text: "Every design ships with a self-checking testbench and a .cst pin-constraints file, so simulation to hardware is one command per stage.", priority: 3, domainIds: ["fpga", "vlsi", "rtl"] },
+        { id: "prb-tang-1", text: "Planned a 60-project Tang Nano 9K (GW1NR-9) curriculum - UART/SPI/I2C masters, DDS, PSRAM framebuffers, VGA/HDMI timing - and brought up the first build end to end.", priority: 1, domainIds: ["fpga", "vlsi", "rtl"] },
+        { id: "prb-tang-2", text: "Set up a 100% open-source flow - Icarus Verilog and GTKWave, Yosys synthesis, nextpnr place-and-route, Apicula bitstream packing - driven by one Makefile per project.", priority: 2, domainIds: ["fpga", "vlsi", "rtl"] },
+        { id: "prb-tang-3", text: "Pairs every design with a self-checking testbench and a .cst pin-constraints file, taking simulation to hardware in 1 command per stage.", priority: 3, domainIds: ["fpga", "vlsi", "rtl"] },
       ],
     },
     {
@@ -233,7 +233,7 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/IoT-Based-SpO2-and-Pulse-Oximeter-with-MAX30102",
       tools: ["ESP8266", "MAX30102", "I2C", "SSD1306 OLED"],
       bullets: [
-        { id: "prb-spo2-1", text: "Portable SpO2 and heart-rate monitor using an ESP8266 and MAX30102 bio-sensor over I2C with a live OLED readout.", priority: 2, domainIds: ["embedded", "pcb"] },
+        { id: "prb-spo2-1", text: "Built a portable SpO2 and heart-rate monitor on an ESP8266, reading a MAX30102 bio-sensor over I2C with live vitals on a 128x64 OLED.", priority: 2, domainIds: ["embedded", "pcb"] },
       ],
     },
     {
@@ -243,10 +243,10 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/Signal-Generator-Using-ESP32",
       tools: ["ESP32", "AD9833 DDS", "Wi-Fi", "I2C"],
       bullets: [
-        { id: "prb-siggen-1", text: "Web-controlled DDS function generator (sine / square / triangle) built on an ESP32 driving an AD9833 module.", priority: 2, domainIds: ["embedded", "pcb"] },
+        { id: "prb-siggen-1", text: "Built a Wi-Fi-controlled DDS function generator with 3 waveforms (sine / square / triangle) on an ESP32 driving an AD9833 module.", priority: 2, domainIds: ["embedded", "pcb"] },
         // Fillers from the PCB_Design / Embedded resume variants.
-        { id: "prb-siggen-2", text: "Interfaced with the AD9833 over SPI, with frequency and waveform selection from a hosted web page or serial control.", priority: 3, domainIds: ["embedded", "pcb"] },
-        { id: "prb-siggen-3", text: "Enabled signal tuning up to 1 MHz with stable output for lab testing and waveform analysis.", priority: 4, domainIds: ["embedded", "pcb"] },
+        { id: "prb-siggen-2", text: "Drove the AD9833 over SPI, with frequency and waveform set from a hosted web page or the serial console.", priority: 3, domainIds: ["embedded", "pcb"] },
+        { id: "prb-siggen-3", text: "Delivered stable output up to 1 MHz for lab bench testing and waveform analysis.", priority: 4, domainIds: ["embedded", "pcb"] },
       ],
     },
     {
@@ -256,10 +256,10 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/FM-Radio-Using-ESP-12E-and-RDA5807M",
       tools: ["KiCad", "ESP32-C3", "ESP-12E", "RDA5807M", "I2C"],
       bullets: [
-        { id: "prb-fm-2", text: "Designed a 2-layer 47 x 28 mm KiCad carrier board with footprints for two alternate MCUs - ESP32-C3 SuperMini on top, ESP-12E on the bottom - sharing one I2C bus, the RDA5807M tuner and an AMS1117 3.3 V rail.", priority: 1, domainIds: ["pcb", "embedded"] },
-        { id: "prb-fm-1", text: "Battery-powered receiver with a PAM8403 amplifier and TP4056 Li-ion charging; the antenna solders to a plated M3 mounting hole.", priority: 2, domainIds: ["pcb", "embedded"] },
-        { id: "prb-fm-3", text: "Firmware serves a Wi-Fi web UI for presets, volume, seek and tuning, with OTA reflashing; one pin map compiles for either core.", priority: 3, domainIds: ["embedded", "pcb"] },
-        { id: "prb-fm-4", text: "Handled ESP32-C3 strapping-pin constraints on the GPIO8/GPIO9 I2C bus; schematic and 3D board renders are generated from source with kicad-cli.", priority: 4, domainIds: ["pcb", "embedded"] },
+        { id: "prb-fm-2", text: "Designed a 2-layer 47 x 28 mm KiCad carrier board supporting 2 alternate MCUs - ESP32-C3 SuperMini on top, ESP-12E on the bottom - on one shared I2C bus with the RDA5807M tuner and an AMS1117 3.3 V rail.", priority: 1, domainIds: ["pcb", "embedded"] },
+        { id: "prb-fm-1", text: "Integrated a PAM8403 amplifier and TP4056 Li-ion charging for battery operation; the antenna solders to a plated M3 mounting hole.", priority: 2, domainIds: ["pcb", "embedded"] },
+        { id: "prb-fm-3", text: "Wrote one firmware for 2 MCU targets from a single pin map, serving a Wi-Fi web UI for presets, volume, seek and tuning, with OTA reflashing.", priority: 3, domainIds: ["embedded", "pcb"] },
+        { id: "prb-fm-4", text: "Resolved ESP32-C3 strapping-pin conflicts on the GPIO8/GPIO9 I2C bus; schematic and 3D board renders regenerate from source via kicad-cli.", priority: 4, domainIds: ["pcb", "embedded"] },
       ],
     },
     {
@@ -269,7 +269,7 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/The-most-Simple-Digital-Thermohygrometer",
       tools: ["ESP-01", "DHT11", "SSD1306 OLED"],
       bullets: [
-        { id: "prb-thermo-1", text: "Temperature and humidity monitor with heat-index computation on an ESP-01, DHT11 sensor, and OLED display.", priority: 2, domainIds: ["embedded"] },
+        { id: "prb-thermo-1", text: "Built a temperature and humidity monitor with heat-index computation on an ESP-01, DHT11 sensor and OLED display.", priority: 2, domainIds: ["embedded"] },
       ],
     },
     {
@@ -279,10 +279,10 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/clock-project",
       tools: ["KiCad", "ESP32-C3", "MAX7219", "DS1307", "ST7735", "DHT11"],
       bullets: [
-        { id: "prb-clock-2", text: "Designed a 2-layer through-hole KiCad board carrying a MAX7219-driven seven-segment display, with the ESP32-C3, DS1307 RTC and ST7735 TFT as pluggable modules.", priority: 1, domainIds: ["pcb", "embedded"] },
-        { id: "prb-clock-1", text: "Wi-Fi clock combining battery-backed DS1307 timekeeping with NTP correction and a TFT dashboard for date, temperature and humidity.", priority: 2, domainIds: ["embedded", "pcb"] },
-        { id: "prb-clock-3", text: "Wrote non-blocking modular firmware - no delay() in the running system - with each peripheral behind a begin()/update() driver and settings persisted to NVS.", priority: 3, domainIds: ["embedded", "pcb"] },
-        { id: "prb-clock-4", text: "Kept PINOUT.md as the single wiring source of truth, mirrored one-for-one by Pinout.h and editable settings served from the clock itself.", priority: 4, domainIds: ["pcb", "embedded"] },
+        { id: "prb-clock-2", text: "Designed a 2-layer through-hole KiCad board for a MAX7219-driven 4-digit seven-segment display, with the ESP32-C3, DS1307 RTC and ST7735 TFT as pluggable modules.", priority: 1, domainIds: ["pcb", "embedded"] },
+        { id: "prb-clock-1", text: "Built a Wi-Fi clock that keeps time through power cuts (battery-backed DS1307) and self-corrects via NTP, with a TFT dashboard for date, temperature and humidity.", priority: 2, domainIds: ["embedded", "pcb"] },
+        { id: "prb-clock-3", text: "Wrote fully non-blocking firmware (zero delay() calls) driving 2 displays on one shared SPI bus at 8 and 24 MHz, pushing only digits that changed.", priority: 3, domainIds: ["embedded", "pcb"] },
+        { id: "prb-clock-4", text: "Added a Wi-Fi settings page for ~3% more flash (78% to 81% of the 1.25 MB app partition) by dropping the async server, JSON and filesystem libraries.", priority: 4, domainIds: ["pcb", "embedded"] },
       ],
     },
     // --- Projects recovered from the old Embedded / PCB_Design resume variants ---
@@ -293,9 +293,9 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/ultimate-pi-box",
       tools: ["Raspberry Pi Zero 2W", "Python", "MPD", "Flask", "OLED"],
       bullets: [
-        { id: "prb-sb-1", text: "Built a multifunctional sound box integrating internet radio, YouTube audio, DLNA/UPnP streaming, Bluetooth and local playback on a Raspberry Pi Zero 2W.", priority: 2, domainIds: ["embedded"] },
-        { id: "prb-sb-2", text: "Designed a GPIO-based user interface with OLED display and rotary encoder for navigation, plus a Flask web interface on the local network.", priority: 3, domainIds: ["embedded"] },
-        { id: "prb-sb-3", text: "Rewrote it as a plug-in component architecture: each menu feature is a package over a shared config, hardware-abstraction and rendering runtime.", priority: 4, domainIds: ["embedded"] },
+        { id: "prb-sb-1", text: "Built a Raspberry Pi Zero 2W sound box unifying 5 audio sources - internet radio, YouTube audio, DLNA/UPnP streaming, Bluetooth and local playback.", priority: 2, domainIds: ["embedded"] },
+        { id: "prb-sb-2", text: "Designed 2 control paths: a GPIO menu with OLED display and rotary encoder, plus a Flask web interface on the local network.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-sb-3", text: "Re-architected it into plug-in components: each menu feature is a package over a shared config, hardware-abstraction and rendering runtime.", priority: 4, domainIds: ["embedded"] },
       ],
     },
     {
@@ -305,9 +305,9 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/tkinterSWv1.2",
       tools: ["Python", "Selenium", "Tkinter", "Pandas"],
       bullets: [
-        { id: "prb-sis-1", text: "Automated multi-site login and CSV report downloads with Selenium, organized into date-based folders.", priority: 3, domainIds: ["embedded"] },
-        { id: "prb-sis-2", text: "Built a Python GUI with per-store buttons, batch mode, and calendar-based selection for 15 stores.", priority: 4, domainIds: ["embedded"] },
-        { id: "prb-sis-3", text: "Merged downloaded CSVs with Pandas and filesystem automation for consolidated analysis.", priority: 5, domainIds: ["embedded"] },
+        { id: "prb-sis-1", text: "Automated logins and CSV report downloads for 15 stores with Selenium, filed into date-based folders.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-sis-2", text: "Built a Tkinter GUI with 15 per-store buttons, a one-click batch loop and calendar date selection, replacing manual daily downloads.", priority: 4, domainIds: ["embedded"] },
+        { id: "prb-sis-3", text: "Consolidated the downloaded CSVs into a single dataset with Pandas for cross-store analysis.", priority: 5, domainIds: ["embedded"] },
       ],
     },
     {
@@ -317,9 +317,9 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/ESP-FrameBuffer",
       tools: ["ESP32-C3", "ST7735", "DHT11", "SD Card", "SPI"],
       bullets: [
-        { id: "prb-fb-1", text: "Framebuffer driver for a 128x160 ST7735 TFT, giving smoother partial-screen updates than direct draw calls.", priority: 2, domainIds: ["embedded"] },
-        { id: "prb-fb-2", text: "Grew into a modular task series on the same display core: Wi-Fi scan, NTP time, DHT11 sensing, SD-card logging and a dashboard UI.", priority: 3, domainIds: ["embedded"] },
-        { id: "prb-fb-3", text: "One codebase targets ESP32 and ESP32-C3 through compile-time guards, each task self-contained and documented.", priority: 4, domainIds: ["embedded"] },
+        { id: "prb-fb-1", text: "Wrote a framebuffer driver for a 128x160 ST7735 TFT, giving smoother partial-screen updates than direct draw calls.", priority: 2, domainIds: ["embedded"] },
+        { id: "prb-fb-2", text: "Extended it into 5 modular tasks on one display core: Wi-Fi scan, NTP time, DHT11 sensing, SD-card logging and a dashboard UI.", priority: 3, domainIds: ["embedded"] },
+        { id: "prb-fb-3", text: "Targets 2 chips (ESP32 and ESP32-C3) from one codebase through compile-time guards, each task self-contained and documented.", priority: 4, domainIds: ["embedded"] },
       ],
     },
     // --- Newer software repos; low priority so 1-page auto-fit trims them first ---
@@ -330,8 +330,8 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/DayForge",
       tools: ["Flutter", "Dart", "Firebase", "Firestore", "Android", "Windows", "Linux"],
       bullets: [
-        { id: "prb-df-1", text: "Shipped a recurring-task tracker for Android, Windows and Linux from one Flutter codebase, backed by Firebase Auth and Firestore with offline-first sync.", priority: 5, domainIds: ["embedded"] },
-        { id: "prb-df-2", text: "Implemented scheduled local notifications with per-task snooze and alarm-channel audio, plus streaks, a year-at-a-glance heatmap and JSON/CSV/Markdown export.", priority: 6, domainIds: ["embedded"] },
+        { id: "prb-df-1", text: "Shipped a habit tracker to 3 platforms (Android, Windows, Linux) from one Flutter codebase, with Firebase Auth and offline-first Firestore sync.", priority: 5, domainIds: ["embedded"] },
+        { id: "prb-df-2", text: "Implemented scheduled reminders with snooze and 5 alarm tones, plus streaks, a year-at-a-glance heatmap and export to 3 formats (JSON/CSV/Markdown).", priority: 6, domainIds: ["embedded"] },
       ],
     },
     {
@@ -341,8 +341,8 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/audichop",
       tools: ["Python", "PyQt6", "ffmpeg", "ffprobe"],
       bullets: [
-        { id: "prb-ac-1", text: "PyQt6 desktop app and CLI that slices MP3, WAV, M4A and FLAC files into fixed-duration segments, streaming through ffmpeg per segment instead of loading whole files into memory.", priority: 6, domainIds: ["embedded"] },
-        { id: "prb-ac-2", text: "Threaded batch processing with wildcard input, auto-padded segment naming and per-file error recovery so one bad file does not stop the run.", priority: 7, domainIds: ["embedded"] },
+        { id: "prb-ac-1", text: "Built a PyQt6 desktop app and CLI that splits 4 audio formats (MP3, WAV, M4A, FLAC) into fixed-length segments, streaming through ffmpeg so 500 MB+ files never load into memory.", priority: 6, domainIds: ["embedded"] },
+        { id: "prb-ac-2", text: "Added threaded batch processing with wildcard input, auto-padded segment naming and per-file error recovery, so 1 bad file never stops the run.", priority: 7, domainIds: ["embedded"] },
       ],
     },
     {
@@ -352,8 +352,8 @@ export const seedData: AppData = {
       sourceLink: "https://github.com/ItzzInfinity/yt-aio",
       tools: ["Python", "PyQt6", "yt-dlp", "SQLite"],
       bullets: [
-        { id: "prb-yt-1", text: "PyQt front end over yt-dlp that lists a channel or playlist as selectable metadata rows and downloads audio or video on worker threads, with a browser-cookie fallback for bot checks.", priority: 7, domainIds: ["embedded"] },
-        { id: "prb-yt-2", text: "Logs every operation to SQLite and resolves all runtime paths relative to the package, so the install is portable across machines.", priority: 8, domainIds: ["embedded"] },
+        { id: "prb-yt-1", text: "Built a PyQt front end over yt-dlp that lists whole channels or playlists as selectable rows and downloads audio or video on worker threads, with a browser-cookie fallback for bot checks.", priority: 7, domainIds: ["embedded"] },
+        { id: "prb-yt-2", text: "Logged every operation to SQLite and made all runtime paths package-relative, so the install is portable across machines.", priority: 8, domainIds: ["embedded"] },
       ],
     },
   ],
